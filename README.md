@@ -25,27 +25,27 @@ Project setup is still in progress. This README will be updated as the architect
 Before starting, git clone the repository.
 ### 1. Install uv
 Run this in PowerShell:
-`powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"`
+`powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"`.
 Fully close and reopen your terminal application. If using VS Code’s terminal, restart VS Code.
 
 ### 2. Check that uv is available
 Enter this in Powershell:
-`uv --version`
+`uv --version`.
 If you see “uv is not recognized,” run the following to update the current session’s command search path, then check again:
-`$env:Path = "$env:USERPROFILE\.local\bin;$env:Path"`
+`$env:Path = "$env:USERPROFILE\.local\bin;$env:Path"`.
 
 ### 3. Navigate to the project folder
-Open PowerShell in the repository’s main folder—the one containing pyproject.toml
+Open PowerShell in the repository’s main folder—the one containing pyproject.toml.
 
 ### 4. Install project dependencies
 Enter this in the Powershell:
-`uv sync`
+`uv sync`.
 
 ### 5. Enable automatic checks before commits
 Everyone needs to run this once per local copy of the repository.
-`uv run pre-commit install`
+`uv run pre-commit install`.
 To check all tracked files immediately:
-`uv run pre-commit run --all-files`
+`uv run pre-commit run --all-files`.
 If a hook modifies files, review and stage those changes before trying to commit again.
 
 ### Reminders:
