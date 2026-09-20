@@ -14,3 +14,8 @@ dependencies = [
 
 [tool.mypy]
 ignore_missing_imports = true
+
+[dependency-groups]
+dev = [
+    "pre-commit>=4.6.2",
+]
