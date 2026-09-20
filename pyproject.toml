@@ -8,6 +8,7 @@ dependencies = [
     "pydantic>=2.13.5",
     "pytest>=9.1.1",
     "ruff>=0.16.8",
+    "uvicorn>=0.53.0",
 ]
 
 [tool.ruff]
