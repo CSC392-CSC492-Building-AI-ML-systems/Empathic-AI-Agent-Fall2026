@@ -57,3 +57,15 @@ If a hook modifies files, review and stage those changes before trying to commit
 ### Reminders:
 Use `uv add library-name` to add any new library. This will update pyproject.toml and uv.lock, so commit and push both pyproject.toml and uv.lock after adding the library.
 After a new library is added, everyone needs to run `uv sync` after git pull.
+
+## Run with Docker
+
+This is so that the same environment (api, postgres, redis, etc.) is run for every contributor
+
+1. Make an `.env` file using the `.env.example` file as a template. Add actual values to your `.env` and do not commit it (it is gitignored but just keep in mind)
+2. Run the docker compose using the file in the `infra/` folder:
+   
+   ```cd infra && docker compose up --build```
+3. The api container listens on `http://localhost:8000` once it's up.
+
+Postgres and redis are included now so they're ready for later sprints, even though they're not connected to anything in the app yet.
