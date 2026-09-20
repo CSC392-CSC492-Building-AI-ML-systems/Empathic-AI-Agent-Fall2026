@@ -49,5 +49,5 @@ To check all tracked files immediately:
 If a hook modifies files, review and stage those changes before trying to commit again.
 
 ### Reminders:
-Use `uv add library-name` to add any new library. This will update pyproject.toml and uv.lock, so commit and push both pyproject.toml and uv.lock.
-After a new library is added, everyone needs to run uv sync after git pull.
+Use `uv add library-name` to add any new library. This will update pyproject.toml and uv.lock, so commit and push both pyproject.toml and uv.lock after adding the library.
+After a new library is added, everyone needs to run `uv sync` after git pull.
