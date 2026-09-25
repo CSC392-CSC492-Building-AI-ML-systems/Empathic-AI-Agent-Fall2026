@@ -24,7 +24,7 @@ def apply_migrations(connection: psycopg.Connection) -> None:
             """
         )
         applied = connection.execute("SELECT path_name FROM migrations").fetchall()
-        applied = {record[0] for record in applied_records}
+        applied = {record[0] for record in applied}
 
         for path in migrations:
             if path.name in applied:
