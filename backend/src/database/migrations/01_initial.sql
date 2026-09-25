@@ -12,7 +12,7 @@ CREATE TABLE messages (
 
     session_id UUID NOT NULL,
     FOREIGN KEY (session_id) REFERENCES sessions(id)
-        ON DELETE CASCADE,
+        ON DELETE CASCADE
 );
 
 CREATE INDEX messages_idx ON messages (session_id, id);
