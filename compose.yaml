@@ -16,5 +16,16 @@ services:
       timeout: 5s
       retries: 5
 
+  migrate:
+    build: ./backend
+    env_file: .env
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+    command: python -m src.database.migrate
+    depends_on:
+      db:
+        condition: service_healthy
+
 volumes:
   postgres_data:
