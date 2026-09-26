@@ -1,15 +1,16 @@
-#
-# This script will run before the app is allowed to start. Modifications to the schema must be done by adding
-# a .sql file with the migration to the migrations directory.
-#
 from pathlib import Path
 import psycopg
 
 from .connection import get_conn_info
 
 def apply_migrations(connection: psycopg.Connection) -> None:
+    """Apply sql migrations to database
 
-    directory = Path(__file__).parent / "migrations"
+    IMPORTANT:
+        This script runs before the app is allowed to start. If you want to modify the schema,
+        you must make a .sql file with the migration in the migrations directory.
+    """
+    directory = Path(__file__).parent / "migrations" # get path of migration folder
     migrations = sorted([f for f in directory.iterdir()])
 
     if not migrations:
@@ -30,7 +31,7 @@ def apply_migrations(connection: psycopg.Connection) -> None:
             if path.name in applied:
                 continue
 
-            sql = path.read_text()
+            sql = path.read_text() # shouldn't be an issue?
             connection.execute(sql)
             connection.execute(
                 "INSERT INTO migrations (path_name) VALUES (%s)",

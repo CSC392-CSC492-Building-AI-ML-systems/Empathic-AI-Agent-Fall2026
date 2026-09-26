@@ -12,6 +12,7 @@ class ConversationDao:
         self.pool = pool
 
     def get_conversation(self, session_id: UUID) -> Session:
+        """Form and return a Session object given session id"""
         session = Session(session_id)
 
         for entry in self._get_messages(session_id):
@@ -21,6 +22,14 @@ class ConversationDao:
         return session
 
     def add_message(self, role: str, content: str, session_id: UUID, kind: str | None = None) -> None:
+        """Add message to database
+
+        Arguments:
+            role - "AGENT" or "USER"
+            content - message string
+            session_id - id of session
+            kind - "CLARIFY" or "ANSWER"
+        """
         sql = """
             INSERT INTO messages (role, kind, content, session_id)
             VALUES (%s, %s, %s, %s)
@@ -30,6 +39,7 @@ class ConversationDao:
                 cursor.execute(sql, (role, kind, content, session_id))
 
     def _get_messages(self, session_id: UUID) -> list[tuple]:
+        """Get a list of messages from database given session id"""
         sql = """
             SELECT id, role, kind, content, created_at, session_id
             FROM messages
