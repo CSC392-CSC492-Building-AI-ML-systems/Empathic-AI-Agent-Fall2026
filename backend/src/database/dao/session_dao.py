@@ -7,6 +7,7 @@ from ..model.session import Session
 
 # errors should be handled in the functions calling?
 class ConversationDao:
+    """Manages all database operations"""
 
     def __init__(self, pool: ConnectionPool) -> None:
         self.pool = pool
