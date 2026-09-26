@@ -25,6 +25,6 @@ app = FastAPI(lifespan=lifespan)
     dao.add_message("AGENT", "Where do you live", session_id, "CLARIFY")
     
     session = dao.get_conversation(session_id)
-    for message in session.messages():
+    for message in session.messages:
         # do stuff
 """
