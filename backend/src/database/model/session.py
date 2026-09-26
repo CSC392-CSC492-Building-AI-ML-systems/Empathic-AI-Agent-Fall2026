@@ -4,7 +4,7 @@ from .message import Message
 class Session:
     """Class representing an entry in the session table"""
 
-    def __init__(self, session_id: UUID, messages: list[Message]) -> None:
+    def __init__(self, session_id: UUID) -> None:
         self.session_id = session_id
         self.messages = []
 
