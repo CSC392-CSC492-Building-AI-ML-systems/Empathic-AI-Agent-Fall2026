@@ -1,4 +1,4 @@
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from psycopg_pool import ConnectionPool
 
@@ -12,13 +12,26 @@ class ConversationDao:
     def __init__(self, pool: ConnectionPool) -> None:
         self.pool = pool
 
+    def create_session(self) -> UUID:
+        """Create a session and return its ID"""
+        session_id = uuid4()
+        with self.pool.connection() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute("INSERT INTO sessions (id) VALUES (%s)", (session_id,))
+        return session_id
+
     def get_conversation(self, session_id: UUID) -> Session:
         """Form and return a Session object given session id"""
         session = Session(session_id)
+        rows = self._get_messages(session_id)
+        if not rows:
+            raise KeyError(f"Session {session_id} does not exist")
 
-        for entry in self._get_messages(session_id):
-            message = Message(entry[1], entry[2], entry[3])
-            session = session.add_message(message)
+        for entry in rows:
+            if entry[0] is None:
+                continue
+            message = Message(entry[0], entry[1], entry[2])
+            session.add_message(message)
 
         return session
 
@@ -42,10 +55,11 @@ class ConversationDao:
     def _get_messages(self, session_id: UUID) -> list[tuple]:
         """Get a list of messages from database given session id"""
         sql = """
-            SELECT id, role, kind, content, created_at, session_id
-            FROM messages
-            WHERE session_id = %s
-            ORDER BY created_at ASC
+            SELECT messages.role, messages.kind, messages.content
+            FROM sessions
+            LEFT JOIN messages ON messages.session_id = sessions.id
+            WHERE sessions.id = %s
+            ORDER BY messages.created_at ASC, messages.id ASC
         """
         with self.pool.connection() as connection:
             with connection.cursor() as cursor:
