@@ -59,14 +59,20 @@ def gpt_prompt(prompt: str, instructions: str) -> str:
     )
     response.raise_for_status()
     data = response.json()
+    if "error" in data:
+        raise RuntimeError(f"OpenRouter error: {data['error']}")
+
     answer = data["choices"][0]["message"].get("content")
+    if not answer:
+        raise RuntimeError("GPT returned no text. Try again.")
+
     return answer
 
 
 if __name__ == "__main__":
     key = API_KEY
     score = 0
-    while score <= 3:
+    while True:
         question = input("enter the question:")
         result = score_prompt(question, key)
 
@@ -87,3 +93,4 @@ if __name__ == "__main__":
             print(gpt_prompt(question, REFINE_INSTRUCTIONS))
         else:  # send the prompt to gpt
             print("\n" + gpt_prompt(question, GENERAL_INSTRUCTIONS))
+            break
