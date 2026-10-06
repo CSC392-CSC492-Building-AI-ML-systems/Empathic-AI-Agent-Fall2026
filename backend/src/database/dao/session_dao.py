@@ -5,7 +5,7 @@ from psycopg_pool import ConnectionPool
 from ..model.message import Message
 from ..model.session import Session
 
-# errors should be handled in the functions calling?
+# errors should be handled in the functions calling
 class ConversationDao:
     """Manages all database operations"""
 
@@ -17,7 +17,7 @@ class ConversationDao:
         session_id = uuid4()
         with self.pool.connection() as connection:
             with connection.cursor() as cursor:
-                cursor.execute("INSERT INTO sessions id VALUES %s", (session_id,))
+                cursor.execute("INSERT INTO sessions (id) VALUES (%s)", (session_id,))
         return session_id
 
     def get_session(self, session_id: UUID) -> Session:
@@ -39,7 +39,7 @@ class ConversationDao:
         """Deletes all messages related to a session_id from database"""
         sql = """
             DELETE FROM sessions 
-            WHERE session_id = %s
+            WHERE id = %s
         """
 
         with self.pool.connection() as connection:
@@ -63,7 +63,7 @@ class ConversationDao:
             with connection.cursor() as cursor:
                 cursor.execute(sql, (role, kind, content, session_id))
 
-    def _get_messages(self, session_id: UUID) -> list[tuple]:
+    def _get_messages(self, session_id: UUID) -> list[tuple] | None:
         """Get a list of messages from database given session id"""
         sql = """
             SELECT messages.role, messages.kind, messages.content
