@@ -69,28 +69,33 @@ def gpt_prompt(prompt: str, instructions: str) -> str:
     return answer
 
 
-if __name__ == "__main__":
-    key = API_KEY
+def evaluate_question(question: str) -> bool:
     score = 0
+    result = score_prompt(question, API_KEY)
+
+    score = result["score"]
+    nearest_level = min(4, max(0, int(score + 0.5)))
+
+    print(f"{RUBRIC[nearest_level]}: {score:.1f} / 4")
+    # print("\nProbability distribution:")
+
+    # for index, label in enumerate(RUBRIC):
+    #     probability = result["probabilities"][str(index)]
+    #     print(f"{index} — {label}: {probability:.0%}")
+
+    if score < 3:  # need carification question
+        print(
+            "The question is not clear enough, please answer some of these questions to make the question clearer."
+        )
+        print(gpt_prompt(question, REFINE_INSTRUCTIONS))
+        return False
+    else:  # send the prompt to gpt
+        print("\n" + gpt_prompt(question, GENERAL_INSTRUCTIONS))
+        return True
+
+
+if __name__ == "__main__":
     while True:
         question = input("enter the question:")
-        result = score_prompt(question, key)
-
-        score = result["score"]
-        nearest_level = min(4, max(0, int(score + 0.5)))
-
-        print(f"{RUBRIC[nearest_level]}: {score:.1f} / 4")
-        # print("\nProbability distribution:")
-
-        # for index, label in enumerate(RUBRIC):
-        #     probability = result["probabilities"][str(index)]
-        #     print(f"{index} — {label}: {probability:.0%}")
-
-        if score < 3:  # need carification question
-            print(
-                "The question is not clear enough, please answer some of these questions to make the question clearer."
-            )
-            print(gpt_prompt(question, REFINE_INSTRUCTIONS))
-        else:  # send the prompt to gpt
-            print("\n" + gpt_prompt(question, GENERAL_INSTRUCTIONS))
+        if evaluate_question(question):
             break
