@@ -17,7 +17,7 @@ class ConversationDao:
         session_id = uuid4()
         with self.pool.connection() as connection:
             with connection.cursor() as cursor:
-                cursor.execute("INSERT INTO sessions id VALUES %s", (session_id,))
+                cursor.execute("INSERT INTO sessions (id) VALUES (%s)", (session_id,))
         return session_id
 
     def get_session(self, session_id: UUID) -> Session:
@@ -39,7 +39,7 @@ class ConversationDao:
         """Deletes all messages related to a session_id from database"""
         sql = """
             DELETE FROM sessions 
-            WHERE session_id = %s
+            WHERE id = %s
         """
 
         with self.pool.connection() as connection:
@@ -76,5 +76,4 @@ class ConversationDao:
             with connection.cursor() as cursor:
                 cursor.execute(sql, (session_id,))
                 return cursor.fetchall()
-
         return None
