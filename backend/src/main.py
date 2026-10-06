@@ -1,7 +1,7 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
-from src.database.connection import create_pool
-from src.database.dao.session_dao import ConversationDao
+from database.connection import create_pool
+from database.dao.session_dao import ConversationDao
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
