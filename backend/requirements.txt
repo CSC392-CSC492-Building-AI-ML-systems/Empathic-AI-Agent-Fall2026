@@ -1,5 +1,0 @@
-fastapi>=0.141.1
-pydantic>=2.13.4
-psycopg[binary]>=3.3.6
-psycopg_pool>=3.3.3
-uvicorn>=0.53

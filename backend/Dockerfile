@@ -1,16 +1,21 @@
 FROM python:3.13-slim
 
+COPY --from=ghcr.io/astral-sh/uv:0.12.23 /uv /bin/uv
+
 ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    UV_PYTHON_DOWNLOADS=never \
+    UV_LINK_MODE=copy \
+    PATH="/app/.venv/bin:$PATH"
 
 WORKDIR /app
 
-COPY requirements.txt ./
-RUN python -m pip install --no-cache-dir -r requirements.txt
+COPY pyproject.toml uv.lock ./
+RUN uv sync --locked --no-dev --no-cache
 
 RUN groupadd --system app && useradd --system --gid app app
 
-COPY src/ ./src/
+COPY backend/src/ ./src/
 
 USER app
 
