@@ -18,6 +18,25 @@ Build an AI Coach prototype that asks helpful questions before responding. The p
 
 ## Status
 
-The container and dependency setup is in place. Application code has not been added yet.
+PostgreSQL and schema migrations have been added. 
 
 ## Getting Started
+
+Create `.env` from `.env.example` if you do not already have one, and set your own PostgreSQL password.
+```powershell
+Copy-Item .env.example .env
+```
+
+After setting the password, run:
+
+```powershell
+docker compose up -d --build
+```
+
+Compose waits for PostgreSQL, then applies SQL migrations.
+The database code has two parts:
+
+- `backend/src/database/connection.py` builds connections from environment variables.
+- `backend/src/database/migrations/` contains numbered SQL files. When you want to change the schema, add a new file. DO NOT modify an existing migration.
+
+Migrations run as a separate Compose service. To apply a new migration without rebuilding the backend, run `docker compose run --rm --build migrate`.
