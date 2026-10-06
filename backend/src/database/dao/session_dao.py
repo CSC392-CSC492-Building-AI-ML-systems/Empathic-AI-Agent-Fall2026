@@ -17,10 +17,10 @@ class ConversationDao:
         session_id = uuid4()
         with self.pool.connection() as connection:
             with connection.cursor() as cursor:
-                cursor.execute("INSERT INTO sessions (id) VALUES (%s)", (session_id,))
+                cursor.execute("INSERT INTO sessions id VALUES %s", (session_id,))
         return session_id
 
-    def get_conversation(self, session_id: UUID) -> Session:
+    def get_session(self, session_id: UUID) -> Session:
         """Form and return a Session object given session id"""
         session = Session(session_id)
         rows = self._get_messages(session_id)
@@ -34,6 +34,17 @@ class ConversationDao:
             session.add_message(message)
 
         return session
+
+    def del_session(self, session_id: UUID) -> None:
+        """Deletes all messages related to a session_id from database"""
+        sql = """
+            DELETE FROM sessions 
+            WHERE session_id = %s
+        """
+
+        with self.pool.connection() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(sql, (session_id,))
 
     def add_message(self, role: str, content: str, session_id: UUID, kind: str | None = None) -> None:
         """Add message to database
@@ -65,3 +76,5 @@ class ConversationDao:
             with connection.cursor() as cursor:
                 cursor.execute(sql, (session_id,))
                 return cursor.fetchall()
+
+        return None
