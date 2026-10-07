@@ -40,3 +40,9 @@ The database code has two parts:
 - `backend/src/database/migrations/` contains numbered SQL files. When you want to change the schema, add a new file. DO NOT modify an existing migration.
 
 Migrations run as a separate Compose service. To apply a new migration without rebuilding the backend, run `docker compose run --rm --build migrate`.
+
+### How To View Frontend Prototype
+
+cd frontend/
+npm install
+npm run dev
