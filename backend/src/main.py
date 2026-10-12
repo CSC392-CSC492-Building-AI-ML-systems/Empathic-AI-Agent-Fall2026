@@ -3,8 +3,8 @@ from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Annotated
 
-from . import config
-from .routers import health, session
+from .src.api import config
+from .src.api.routers import health, session
 
 app = FastAPI(
     title="clarifai",
