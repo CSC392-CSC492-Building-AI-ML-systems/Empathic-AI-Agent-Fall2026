@@ -10,6 +10,7 @@ CREATE TABLE users (
 
 CREATE TABLE sessions (
     id UUID PRIMARY KEY,
+    name TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
 
     user_id UUID NOT NULL,
