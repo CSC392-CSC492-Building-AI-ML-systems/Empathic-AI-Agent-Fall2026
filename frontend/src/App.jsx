@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Sidebar } from './components/sidebar/Sidebar';
 import { Input } from './components/buttons/Input';
-import { MoodSelector } from './components/chat/MoodSelector';
+import { InitialMood } from './components/chat/InitialMood';
 import { ChatThread } from './components/chat/ChatThread';
 import { PastChatsView } from './components/views/PastChatsView';
 import './App.css';
@@ -19,47 +19,45 @@ function App() {
 
 	};
 
-	// Handle Quick Mood Option Selection
 	const handleMoodSelect = (mood) => {
-	// 1. Determine specific response for mood selection
-    let initialResponse = "How can I help you today?";
-    if (mood === 'terrible') {
-    	initialResponse = "Oh no, what happened? Why was your day terrible";
-    } 
-	else if (mood === 'great' || mood === 'good') {
-    	initialResponse = "Glad to hear that! What's on your mind today?";
-    } 
-	else if (mood === 'alright') {
-    	initialResponse = "Hope your day gets better! How can I assist you?";
-    }
+		// hv default response based on the user's initial mood
+		// seem more human
+		let initialResponse = "How can I help you today?";
+		if (mood === 'terrible') {
+			initialResponse = "Oh no, what happened? Why was your day terrible";
+		} 
+		else if (mood === 'great' || mood === 'good') {
+			initialResponse = "Glad to hear that! What's on your mind today?";
+		} 
+		else if (mood === 'alright') {
+			initialResponse = "Hope your day gets better! How can I assist you?";
+		}
 
-    // 2. Prepare payload and forward copy to backend
-    const userMessagePayload = {
-    	text: mood,
-    	sender: 'user',
-    	timestamp: new Date().toISOString(),
-    };
-    sendToBackend(userMessagePayload);
 
-    // 3. Render initial custom response in UI
-    setMessages([
-    	{ id: Date.now(), sender: 'chat', text: initialResponse },
-    ]);
+		// show initial response like a chat bubble based on user's initial mood
+		setMessages([
+			{ id: Date.now(), sender: 'chat', text: initialResponse },
+		]);
 
 	};
 
+	// new chat resetting everything
 	const handleNewChat = () => {
     	setActiveTab('chat');
     	setMessages([]);
     	setInputVal('');
 	};
-
+	
+	// get msg from user and display
 	const handleSubmit = (e) => {
     	e.preventDefault();
     	const trimmedInput = inputVal.trim();
     	if (!trimmedInput) return;
 
-    // Prepare payload and forward copy to backend
+	const userMsg = { id: Date.now(), sender: 'user', text: trimmedInput };
+	setMessages((prev) => [...prev, userMsg]);
+
+    // prepare and send msg to backend
     const userMessagePayload = {
     	text: trimmedInput,
       	sender: 'user',
@@ -68,12 +66,13 @@ function App() {
 
     sendToBackend(userMessagePayload);
 
-    // Render user message and placeholder response for typed input
-    const userMsg = { id: Date.now(), sender: 'user', text: trimmedInput };
-    const botMsg = { id: Date.now() + 1, sender: 'chat', text: 'placeholder' };
 
-    setMessages((prev) => [...prev, userMsg, botMsg]);
-    setInputVal('');
+	// will need to get response from backend
+	// display agent response
+    const agentMsg = { id: Date.now() + 1, sender: 'chat', text: 'placeholder' };
+    setMessages((prev) => [...prev, agentMsg]);
+    
+	setInputVal('');
  	};
 
   	const sidebarTabState =
@@ -102,7 +101,7 @@ function App() {
 						<h1 className="text-4xl font-extrabold text-gray-900">Welcome</h1>
 						<p className="text-2xl text-gray-700">How was your day :)</p>
 						</div>
-						<MoodSelector onSelectMood={handleMoodSelect} />
+						<InitialMood onSelectMood={handleMoodSelect} />
 					</div>
 					) : (
 					<ChatThread messages={messages} />

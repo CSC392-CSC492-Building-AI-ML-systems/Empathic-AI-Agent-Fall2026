@@ -2,7 +2,7 @@ import { PlusIcon } from '../buttons/Icons';
 
 const MOODS = ['great', 'good', 'alright', 'terrible'];
 
-export function MoodSelector({ onSelectMood }) {
+export function InitialMood({ onSelectMood }) {
 	return (
 		<div className="grid grid-cols-2 gap-3 w-80">
 		{MOODS.map((mood) => (

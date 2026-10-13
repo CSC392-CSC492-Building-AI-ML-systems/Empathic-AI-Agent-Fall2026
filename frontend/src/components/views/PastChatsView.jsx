@@ -1,5 +1,6 @@
 import { ArrowRightIcon } from '../buttons/Icons';
 
+{/* temporary to show what past chats can be like */}
 const PAST_CHATS_MOCK = [
 	{ id: 1, date: 'Jan 1, 2026', title: 'laptop', desc: 'you wanted to buy a laptop and I suggested blah blah blah' },
 	{ id: 2, date: 'Jan 10, 2026', title: 'climbing questions', desc: 'helped you with climbing' },

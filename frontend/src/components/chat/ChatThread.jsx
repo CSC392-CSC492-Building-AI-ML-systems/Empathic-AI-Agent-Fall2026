@@ -18,14 +18,13 @@ export function ChatThread({ messages, isLoading }) {
 			<ChatBubble key={msg.id} sender={msg.sender} text={msg.text} />
 		))}
 
-		{/* Visual loading indicator */}
 		{isLoading && (
 			<div className="text-sm text-gray-400 italic py-2">
 			Thinking...
 			</div>
 		)}
 
-		{/* Invisible element to anchor the scroll position */}
+		{/* anchor scroll position */}
 		<div ref={messagesEndRef} />
 		</div>
 	);
