@@ -6,3 +6,5 @@
 .vscode/
 __pycache__/
 .pytest_cache/
+frontend/node_modules/
+frontend/.vite/
