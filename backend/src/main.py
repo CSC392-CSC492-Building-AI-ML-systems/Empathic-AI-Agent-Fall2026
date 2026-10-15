@@ -3,8 +3,8 @@ from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Annotated
 
-from .src.api import config
-from .src.api.routers import health, session
+from .api import config
+from .api.routers import health, session
 
 app = FastAPI(
     title="clarifai",
@@ -28,7 +28,7 @@ app.include_router(health.router)
 app.include_router(session.router)
 
 @lru_cache
-def get_settings():
+async def get_settings():
     return config.Settings()
 
 @app.get("/")
