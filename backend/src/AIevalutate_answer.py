@@ -1,3 +1,5 @@
+import asyncio
+
 import requests
 
 MODEL = "openai/gpt-4.1-mini"
@@ -19,8 +21,12 @@ RUBRIC = [
 ]
 
 
-def score_prompt(prompt: str, api_key: str) -> dict:
-    response = requests.post(
+async def post_async(*args, **kwargs):
+    return await asyncio.to_thread(requests.post, *args, **kwargs)
+
+
+async def score_prompt(prompt: str, api_key: str) -> dict:
+    response = await post_async(
         "https://openrouter.ai/api/alpha/decisions",
         headers={"Authorization": f"Bearer {api_key}"},
         json={
@@ -40,8 +46,8 @@ def score_prompt(prompt: str, api_key: str) -> dict:
     return response.json()["answers"]["clarity"]
 
 
-def gpt_prompt(prompt: str, instructions: str) -> str:
-    response = requests.post(
+async def gpt_prompt(prompt: str, instructions: str) -> str:
+    response = await post_async(
         "https://openrouter.ai/api/v1/chat/completions",
         headers={
             "Authorization": f"Bearer {API_KEY.strip()}",
@@ -69,9 +75,9 @@ def gpt_prompt(prompt: str, instructions: str) -> str:
     return answer
 
 
-def evaluate_question(question: str) -> bool:
+async def evaluate_question(question: str) -> bool:
     score = 0
-    result = score_prompt(question, API_KEY)
+    result = await score_prompt(question, API_KEY)
 
     score = result["score"]
     nearest_level = min(4, max(0, int(score + 0.5)))
@@ -87,15 +93,19 @@ def evaluate_question(question: str) -> bool:
         print(
             "The question is not clear enough, please answer some of these questions to make the question clearer."
         )
-        print(gpt_prompt(question, REFINE_INSTRUCTIONS))
+        print(await gpt_prompt(question, REFINE_INSTRUCTIONS))
         return False
     else:  # send the prompt to gpt
-        print("\n" + gpt_prompt(question, GENERAL_INSTRUCTIONS))
+        print("\n" + await gpt_prompt(question, GENERAL_INSTRUCTIONS))
         return True
 
 
-if __name__ == "__main__":
+async def main():
     while True:
-        question = input("enter the question:")
-        if evaluate_question(question):
+        question = await asyncio.to_thread(input, "Enter the question: ")
+        if await evaluate_question(question):
             break
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
