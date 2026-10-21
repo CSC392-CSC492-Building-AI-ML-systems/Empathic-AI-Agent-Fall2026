@@ -9,6 +9,8 @@ dependencies = [
     "pydantic>=2.13.5",
     "pydantic-settings>=2.15.0",
     "pytest>=9.1.1",
+    "psycopg[binary]>=3.3.6",
+    "psycopg_pool>=3.3.3",
     "requests>=2.34.2",
     "uvicorn>=0.54.0",
 ]
