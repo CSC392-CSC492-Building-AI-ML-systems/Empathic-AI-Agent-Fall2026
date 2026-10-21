@@ -20,7 +20,36 @@ async def lifespan(app: FastAPI):
     finally:
         await pool.close()
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(
+    lifespan=lifespan.
+    title="clarifai",
+    description="empathic ai"
+)
+
+origins = [
+    "http://localhost",
+    "http://localhost:8080",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(health.router)
+app.include_router(session.router)
+
+@lru_cache
+async def get_settings():
+    return config.Settings()
+
+@app.get("/")
+async def root(settings: Annotated[config.Settings, Depends(get_settings)]):
+    return { "name": settings.app_name}
+
 
 """
     > session_dao = app.state.session_dao
@@ -55,3 +84,11 @@ app = FastAPI(lifespan=lifespan)
     > session.get_conversation_as_json()
 """
 
+    session_id = dao.create_session()
+    dao.add_message("USER", "Where should we go out to eat?", session_id)
+    dao.add_message("AGENT", "Where do you live", session_id, "CLARIFY")
+    
+    session = dao.get_conversation(session_id)
+    for message in session.messages:
+        # do stuff
+"""
