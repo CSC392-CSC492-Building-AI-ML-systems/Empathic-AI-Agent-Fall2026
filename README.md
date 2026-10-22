@@ -44,9 +44,9 @@ Migrations run as a separate Compose service. To apply a new migration without r
 ### How To View Frontend Prototype
 
 ```powershell
-cd frontend/
+cd frontend
 npm install
 npm run dev
 ```
 
-or view at [temporary](https://sam-the-empathetic-ai.vercel.app/>)
+or view at [temporary](https://sam-the-empathetic-ai.vercel.app/)
