@@ -16,7 +16,21 @@ function App() {
 		console.log("Sending payload to backend:", payload);
     
 		// put actual backend API call
+		try {
+			const resonse = await fetch("http://localhost:8000/session/test-session/message", {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify({ message: payload.text }),
+			});
+			const backendResponse = await response.json();
+			console.log("Received from backend: ", backendResponse);
 
+		}
+		catch (error) {
+			console.log("Error in sending msg to backend")
+		}
 	};
 
 	const handleMoodSelect = (mood) => {
@@ -64,6 +78,7 @@ function App() {
       	timestamp: new Date().toISOString(),
     };
 
+	// sending msg to backend and receiving response
     sendToBackend(userMessagePayload);
 
 
