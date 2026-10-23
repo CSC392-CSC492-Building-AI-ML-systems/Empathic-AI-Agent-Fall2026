@@ -43,6 +43,8 @@ Migrations run as a separate Compose service. To apply a new migration without r
 
 ### How To View Frontend Prototype
 
+```
 cd frontend/
 npm install
 npm run dev
+```
