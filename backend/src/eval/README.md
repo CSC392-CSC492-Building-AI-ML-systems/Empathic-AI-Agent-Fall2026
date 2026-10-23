@@ -21,14 +21,28 @@ Clarification Service can use it too.
 
 ## Layout
 
-This package is empty for now; it grows as the eval issues land:
+- `llm.py`: LLM access. Which model and provider get called is set in `.env`
+  (see `.env.example`), so switching models never needs a code change
+- `mock.py`: fake LLM client for tests, so nothing hits the network
 
-- LLM access (swappable model/provider, plus a mock for tests)
+Still to come as the eval issues land:
+
 - Agents under test (prompted stub agent, baselines)
 - Runner and run logs
 - Metrics and reports (over-/under-clarification, question quality, end-to-end)
 
 Tests live in [`tests/eval/`](../../../tests/eval/).
+
+## Running against a real model
+
+Fill in `PROVIDER`, `MODEL` and `LLM_API_KEY` in `.env`, then:
+
+```bash
+uv run python -m backend.src.eval.llm "hello"
+```
+
+This is a manual check only. Tests use the mock client and never call a real
+model.
 
 ## Dependencies
 
