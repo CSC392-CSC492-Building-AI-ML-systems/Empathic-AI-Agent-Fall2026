@@ -39,17 +39,21 @@ async def send_conversation_state(
     message: Message
 ):
     message_dao = request.app.state.message_dao
-    convo_history = []
+    session_dao = request.app.state.session_dao
 
-    await message_dao.add_message("user", message.message, session_id, "user response")
+    # add user message to db
+    await message_dao.add_message("user", message.message, session_id)
 
-    for msg in await message_dao.get_messages(session_id):
-        convo_history.append({"role": msg.get_role(), "content": msg.get_content()})
-
+    # get session state
+    conversation = await session_dao.get_session(session_id)
+    convo_history = conversation.get_conversation_for_model()
     print(convo_history)
 
+    # send session state to model and get response
     response = await model.send_model(convo_history)
 
-    await message_dao.add_message("assistant", response, session_id, "agent response")
-    
+    # add assistant response to db
+    await message_dao.add_message("assistant", response, session_id)
+
+    # respond
     return {"response": response}
