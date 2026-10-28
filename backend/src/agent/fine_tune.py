@@ -87,7 +87,7 @@ async def model_reply(messages: list, model_id: str) -> str:
     return answer
 
 
-async def send_model(messages: list) -> list:
+async def send_model(messages: list) -> str:
     if not API_KEY:
         print("Run 'hf auth login', or set HF_TOKEN on your backend.")
         return
@@ -98,8 +98,9 @@ async def send_model(messages: list) -> list:
         print(f"Connection error: {error}")
         return
     print("Connected.")
-    messages.insert(0, [{"role": "system", "content": SYSTEM_INSTRUCTIONS}])
-
+    messages = [
+        {"role": "system", "content": SYSTEM_INSTRUCTIONS}
+    ] + messages
     try:
         answer = await model_reply(messages, model_id)
     except (requests.RequestException, RuntimeError, ValueError) as error:
