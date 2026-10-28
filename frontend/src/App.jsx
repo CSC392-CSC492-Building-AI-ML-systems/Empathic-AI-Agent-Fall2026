@@ -18,8 +18,8 @@ function App() {
 
 		// backend API call
 		try {
-			const response = await fetch("http://localhost:8000/session", {
-				method: 'POST', 
+			const response = await fetch("http://localhost:8000/session/", {
+				method: 'GET', 
 			});
 			const session = await response.json();
 			setSessionId(session.session_id);
@@ -54,7 +54,7 @@ function App() {
 
 		}
 		catch (error) {
-			console.log("Error in sending msg to backend")
+			console.log("Error in sending msg to backend", error)
 		}
 	};
 
