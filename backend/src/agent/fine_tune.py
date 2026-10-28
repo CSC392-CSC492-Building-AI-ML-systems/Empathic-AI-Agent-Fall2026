@@ -2,12 +2,13 @@ import asyncio
 import os
 
 import requests
-from huggingface_hub import get_token
 
 ENDPOINT_URL = "https://6ae1805fab20e518b003b166.endpoints.huggingface.cloud"
 
-# Hugging Face credentials, not your OpenRouter key.
-API_KEY = (os.getenv("HF_TOKEN", "").strip() or get_token() or "").strip()
+API_KEY = (os.getenv("HF_TOKEN")).strip()
+
+if not API_KEY:
+    raise RuntimeError("HF_TOKEN is missing from the backend environment.")
 
 SYSTEM_INSTRUCTIONS = """
 You are a helpful conversational assistant. Be warm, natural, and concise.
@@ -98,9 +99,7 @@ async def send_model(messages: list) -> str:
         print(f"Connection error: {error}")
         return
     print("Connected.")
-    messages = [
-        {"role": "system", "content": SYSTEM_INSTRUCTIONS}
-    ] + messages
+    messages = [{"role": "system", "content": SYSTEM_INSTRUCTIONS}] + messages
     try:
         answer = await model_reply(messages, model_id)
     except (requests.RequestException, RuntimeError, ValueError) as error:

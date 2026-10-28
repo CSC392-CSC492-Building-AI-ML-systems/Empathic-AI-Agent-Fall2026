@@ -21,7 +21,6 @@ CREATE TABLE sessions (
 CREATE TABLE messages (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     role TEXT NOT NULL,
-    kind TEXT,
     content TEXT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
 
