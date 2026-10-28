@@ -1,7 +1,8 @@
 import os
 
 from psycopg.conninfo import make_conninfo
-from psycopg_pool import ConnectionPool
+from psycopg_pool import AsyncConnectionPool
+
 
 def get_conn_info() -> str:
     """Form and return a connection string for database using .env variables"""
@@ -19,6 +20,7 @@ def get_conn_info() -> str:
         password=password,
     )
 
-def create_pool() -> ConnectionPool:
-    """Form and return a connection pool"""
-    return ConnectionPool(get_conn_info(), min_size=1, max_size=5, open=True)
+
+def create_pool() -> AsyncConnectionPool:
+    """Form and return an async connection pool"""
+    return AsyncConnectionPool(get_conn_info(), min_size=1, max_size=5, open=False)
