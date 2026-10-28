@@ -27,7 +27,7 @@ class SessionDao:
         """Form and return a Session object given session id"""
 
         sql = """
-            SELECT name FROM sessions
+            SELECT name, created_at FROM sessions
             WHERE id = %s
         """
         async with self.pool.connection() as connection:
@@ -37,7 +37,7 @@ class SessionDao:
         if row is None:
             raise KeyError(f"Session {session_id} does not exist")
 
-        session = Session(session_id, row[0])
+        session = Session(session_id, row[1], row[0])
         messages = await self.message_dao.get_messages(session_id)
         for message in messages:
             session.add_message(message)
