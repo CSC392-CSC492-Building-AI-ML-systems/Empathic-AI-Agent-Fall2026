@@ -36,7 +36,10 @@ app = FastAPI(lifespan=lifespan, title="SAM", description="empathic ai")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=get_settings().cors_origins,
+    allow_origins=[
+        str(origin).strip().rstrip("/")
+        for origin in get_settings().cors_origins
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

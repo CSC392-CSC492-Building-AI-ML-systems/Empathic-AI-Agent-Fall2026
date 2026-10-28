@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Sidebar } from './components/sidebar/Sidebar';
 import { Input } from './components/buttons/Input';
 import { InitialMood } from './components/chat/InitialMood';
@@ -10,13 +10,52 @@ function App() {
 	const [activeTab, setActiveTab] = useState('chat'); // 'chat' | 'past_chats'
 	const [messages, setMessages] = useState([]);
 	const [inputVal, setInputVal] = useState('');
+	const [sessionId, setSessionId] = useState(null);
 
-	// Placeholder function for backend integration
+	// getting session id
+	const makeNewSession = async () => {
+		console.log("Getting a new session id from backend");
+
+		// backend API call
+		try {
+			const response = await fetch("http://localhost:8000/session", {
+				method: 'POST', 
+			});
+			const session = await response.json();
+			setSessionId(session.session_id);
+			console.log("Current session id: ", session.session_id);
+		}
+		catch (error) {
+			console.log("Error in getting a new session id");
+		}
+	}
+
+	// immediately create a session
+	// runs when compopnent first loads
+	useEffect(() => {
+		makeNewSession();
+	}, []);
+
+	// backend integration
 	const sendToBackend = async (payload) => {
 		console.log("Sending payload to backend:", payload);
     
-		// put actual backend API call
+		// backend API call
+		try {
+			const response = await fetch("http://localhost:8000/session/test-session/message", {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify({ message: payload.text }),
+			});
+			const backendResponse = await response.json();
+			console.log("Received from backend: ", backendResponse);
 
+		}
+		catch (error) {
+			console.log("Error in sending msg to backend")
+		}
 	};
 
 	const handleMoodSelect = (mood) => {
@@ -42,10 +81,12 @@ function App() {
 	};
 
 	// new chat resetting everything
+	// also creates a new session id
 	const handleNewChat = () => {
     	setActiveTab('chat');
     	setMessages([]);
     	setInputVal('');
+		makeNewSession();
 	};
 	
 	// get msg from user and display
@@ -64,6 +105,7 @@ function App() {
       	timestamp: new Date().toISOString(),
     };
 
+	// sending msg to backend and receiving response
     sendToBackend(userMessagePayload);
 
 
