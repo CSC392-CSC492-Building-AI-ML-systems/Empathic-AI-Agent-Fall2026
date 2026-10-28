@@ -28,7 +28,7 @@ class Session:
                                   "content": message.get_content()})
         return convo_history
 
-    def get_conversation_for_frontend(self) -> list[dict[str, str]]:
+    def get_conversation_for_frontend(self) -> list[dict[str, str, datetime]]:
         convo_history = []
         for message in self.messages:
             convo_history.append({"role": message.get_role(),
