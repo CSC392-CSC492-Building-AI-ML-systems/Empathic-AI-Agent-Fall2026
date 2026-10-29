@@ -1,14 +1,8 @@
 import { ArrowRightIcon } from '../buttons/Icons';
+import { PAST_CHATS_MOCK } from '../../mockChats/pastChatsTemp';
+{/* temporary to show what past chats can be like ^^ */}
 
-{/* temporary to show what past chats can be like */}
-const PAST_CHATS_MOCK = [
-	{ id: 1, date: 'Jan 1, 2026', title: 'laptop', desc: 'you wanted to buy a laptop and I suggested blah blah blah' },
-	{ id: 2, date: 'Jan 10, 2026', title: 'climbing questions', desc: 'helped you with climbing' },
-	{ id: 3, date: 'Jan 19, 2026', title: 'tft comp recs', desc: 'helped you learn comps to reach masters' },
-	{ id: 4, date: 'Jan 29, 2026', title: 'life chat', desc: 'talked about life' },
-];
-
-export function PastChatsView() {
+export function PastChatsView({onSelectChat}) {
 	return (
 		<div className="p-12 overflow-y-auto max-w-4xl">
 		<h1 className="text-3xl font-bold text-gray-900 mb-1">Past Chats</h1>
@@ -18,6 +12,7 @@ export function PastChatsView() {
 			{PAST_CHATS_MOCK.map((chat) => (
 			<div
 				key={chat.id}
+				onClick={() => onSelectChat(chat)}
 				className="w-full bg-white rounded-2xl p-5 border border-gray-100 shadow-xs flex items-center justify-between hover:shadow-sm transition-shadow cursor-pointer"
 			>
 				<div className="space-y-1">

@@ -1,7 +1,7 @@
 import { HeartIcon } from '../buttons/Icons';
 import { SidebarNavItem } from './SidebarNavItem';
 
-export function Sidebar({ activeTab, onNewChat, onOpenPastChats }) {
+export function Sidebar({ activeTab, onNewChat, onOpenPastChats, onOpenLogin, onOpenSettings }) {
 	return (
 		<aside className="w-64 bg-[#e9ebe6] border-r border-gray-300/60 flex flex-col justify-between p-4 shrink-0">
 		<div className="space-y-6">
@@ -28,8 +28,16 @@ export function Sidebar({ activeTab, onNewChat, onOpenPastChats }) {
 
 		{/* bottom of sidebar */}
 		<div className="space-y-2">
-			<SidebarNavItem label="login" />
-			<SidebarNavItem label="settings" />
+			<SidebarNavItem 
+				label="login"
+				active={activeTab === 'login'}
+				onClick={onOpenLogin} 
+			/>
+			<SidebarNavItem 
+				label="settings"
+				active={activeTab === 'settings'}
+				onClick={onOpenSettings} 
+			/>
 		</div>
 		</aside>
 	);

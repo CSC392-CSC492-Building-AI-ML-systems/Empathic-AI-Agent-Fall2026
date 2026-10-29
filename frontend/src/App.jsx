@@ -4,10 +4,13 @@ import { Input } from './components/buttons/Input';
 import { InitialMood } from './components/chat/InitialMood';
 import { ChatThread } from './components/chat/ChatThread';
 import { PastChatsView } from './components/views/PastChatsView';
+import { LoginView } from './components/views/LoginView';
+import { SettingsView } from './components/views/SettingsView';
+import { SignupView } from './components/views/SignupView';
 import './App.css';
 
 function App() {
-	const [activeTab, setActiveTab] = useState('chat'); // 'chat' | 'past_chats'
+	const [activeTab, setActiveTab] = useState('chat' | 'past_chats' | 'login' | 'settings' | 'signup' ); 
 	const [messages, setMessages] = useState([]);
 	const [inputVal, setInputVal] = useState('');
 	const [sessionId, setSessionId] = useState(null);
@@ -80,7 +83,7 @@ function App() {
 
 		// show initial response like a chat bubble based on user's initial mood
 		setMessages([
-			{ id: Date.now(), sender: 'chat', text: initialResponse },
+			{ id: Date.now(), sender: 'sam', text: initialResponse },
 		]);
 
 	};
@@ -116,6 +119,8 @@ function App() {
 			timestamp: new Date().toISOString(),
 		};
 
+		setInputVal('');
+
 		// sending msg to backend and receiving response
 		const agentResponse = await sendToBackend(userMessagePayload);
 
@@ -124,22 +129,33 @@ function App() {
 		// display agent response
 		const agentMsg = { 
 			id: Date.now() + 1,
-			sender: 'chat', 
+			sender: 'sam', 
 			text: agentResponse,
 			timestamp: new Date().toISOString()
 		};
 
 		setMessages((prev) => [...prev, agentMsg]);
 		
-		setInputVal('');
+		
  	};
 
   	const sidebarTabState =
-    	activeTab === 'past_chats'
+		activeTab === 'settings'
+		? 'settings'
+		: activeTab === 'login' || activeTab === 'signup'
+		? 'login'
+    	: activeTab === 'past_chats'
       	? 'past_chats'
       	: messages.length === 0
       	? 'chat_new'
       	: 'chat_active';
+
+	// showing the temp past chats
+	const handleSelectPastChat = (chat) => {
+		setMessages(chat.messages);
+		setSessionId(chat.sessionId);
+		setActiveTab('chat');
+	};
 
   	return (
     	<div className="flex h-screen w-full bg-[#f6f7f5] text-gray-800 font-sans">
@@ -147,18 +163,33 @@ function App() {
         	activeTab={sidebarTabState}
         	onNewChat={handleNewChat}
         	onOpenPastChats={() => setActiveTab('past_chats')}
+			onOpenLogin={() => setActiveTab('login')}
       	/>
 
       	<main className="flex-1 flex flex-col h-full overflow-hidden relative">
         	{activeTab === 'past_chats' ? (
-          		<PastChatsView />
-        	) : (
+          		<PastChatsView onSelectChat={handleSelectPastChat} />
+        	) : activeTab === 'login' ? (
+				<LoginView 
+					onBackToChat={() => setActiveTab('chat')}
+					onSwitchToSignup={() => setActiveTab('signup')}
+					/>
+			) : activeTab === 'settings' ? (
+				<SettingsView onBackToChat={() => setActiveTab('chat')} />
+			
+			) : activeTab === 'signup' ? (
+				<SignupView 
+					onBackToChat={() => setActiveTab('chat')} 
+					onBackToLogin={() => setActiveTab('login')}
+				/>
+			
+			) : (
 				<div className="flex-1 flex flex-col h-full justify-between overflow-hidden">
 					{messages.length === 0 ? (
 					<div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-8">
 						<div className="space-y-3">
 						<h1 className="text-4xl font-extrabold text-gray-900">Welcome</h1>
-						<p className="text-2xl text-gray-700">How was your day :)</p>
+						<p className="text-2xl text-gray-700">How was your day ?</p>
 						</div>
 						<InitialMood onSelectMood={handleMoodSelect} />
 					</div>
