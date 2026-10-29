@@ -20,8 +20,8 @@ async def start_conversation_state(
     user_dao = request.app.state.user_dao
     session_dao = request.app.state.session_dao
 
-    user_id = await user_dao.create_user("tyler", "holden", "fake2", "password", "tylerholden", "goat")
-    session_id = await session_dao.create_session(user_id, "tylerholden")
+    TEST_USER_ID = uuid.UUID("00000000-0000-0000-0000-000000000001")
+    session_id = await session_dao.create_session(TEST_USER_ID, "tylerholden")
 
     return {"session_id": str(session_id)}
 
@@ -47,7 +47,6 @@ async def send_conversation_state(
     # get session state
     conversation = await session_dao.get_session(session_id)
     convo_history = conversation.get_conversation_for_model()
-    print(convo_history)
 
     # send session state to model and get response
     response = await model.send_model(convo_history)
