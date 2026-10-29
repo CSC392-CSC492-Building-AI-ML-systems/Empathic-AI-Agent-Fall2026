@@ -164,6 +164,7 @@ function App() {
         	onNewChat={handleNewChat}
         	onOpenPastChats={() => setActiveTab('past_chats')}
 			onOpenLogin={() => setActiveTab('login')}
+			onOpenSettings={() => setActiveTab('settings')}
       	/>
 
       	<main className="flex-1 flex flex-col h-full overflow-hidden relative">
