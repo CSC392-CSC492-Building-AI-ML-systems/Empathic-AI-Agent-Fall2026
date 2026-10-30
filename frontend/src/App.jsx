@@ -37,11 +37,11 @@ function App() {
 	// immediately create a session
 	// runs when compopnent first loads
 	useEffect(() => {
-    if (!sessionFetched.current) {
-        sessionFetched.current = true;
-        makeNewSession();
-    }
-}, []);
+		if (!sessionFetched.current) {
+			sessionFetched.current = true;
+			makeNewSession();
+		}
+	}, []);
 
 	// backend integration
 	const sendToBackend = async (payload) => {
@@ -159,56 +159,64 @@ function App() {
 
   	return (
     	<div className="flex h-screen w-full bg-[#f6f7f5] text-gray-800 font-sans">
-      	<Sidebar
-        	activeTab={sidebarTabState}
-        	onNewChat={handleNewChat}
-        	onOpenPastChats={() => setActiveTab('past_chats')}
-			onOpenLogin={() => setActiveTab('login')}
-			onOpenSettings={() => setActiveTab('settings')}
-      	/>
 
-      	<main className="flex-1 flex flex-col h-full overflow-hidden relative">
-        	{activeTab === 'past_chats' ? (
-          		<PastChatsView onSelectChat={handleSelectPastChat} />
-        	) : activeTab === 'login' ? (
-				<LoginView 
+			{activeTab === 'login' ? (
+				<LoginView
 					onBackToChat={() => setActiveTab('chat')}
 					onSwitchToSignup={() => setActiveTab('signup')}
-					/>
-			) : activeTab === 'settings' ? (
-				<SettingsView onBackToChat={() => setActiveTab('chat')} />
-			
+				/>
 			) : activeTab === 'signup' ? (
-				<SignupView 
-					onBackToChat={() => setActiveTab('chat')} 
+				<SignupView
+					onBackToChat={() => setActiveTab('chat')}
 					onBackToLogin={() => setActiveTab('login')}
 				/>
-			
 			) : (
-				<div className="flex-1 flex flex-col h-full justify-between overflow-hidden">
-					{messages.length === 0 ? (
-					<div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-8">
-						<div className="space-y-3">
-						<h1 className="text-4xl font-extrabold text-gray-900">Welcome</h1>
-						<p className="text-2xl text-gray-700">How was your day ?</p>
-						</div>
-						<InitialMood onSelectMood={handleMoodSelect} />
-					</div>
-					) : (
-					<ChatThread messages={messages} />
-					)}
-
-					<div className="p-6 max-w-4xl w-full mx-auto">
-					<Input
-						value={inputVal}
-						onChange={(e) => setInputVal(e.target.value)}
-						onSubmit={handleSubmit}
-						placeholder={messages.length === 0 ? "What is your question" : "Reply..."}
+				<>
+					<Sidebar
+						activeTab={sidebarTabState}
+						onNewChat={handleNewChat}
+						onOpenPastChats={() => setActiveTab('past_chats')}
+						onOpenLogin={() => setActiveTab('login')}
+						onOpenSettings={() => setActiveTab('settings')}
 					/>
-					</div>
-				</div>
+
+					<main className="flex-1 flex flex-col h-full overflow-hidden relative">
+						{activeTab === 'past_chats' ? (
+							<PastChatsView 
+								onSelectChat={handleSelectPastChat} 
+							/>
+						) : activeTab === 'settings' ? (
+							<SettingsView 
+								onBackToChat={() => setActiveTab('chat')} 
+							/>
+						) : (
+							<div className="flex-1 flex flex-col h-full justify-between overflow-hidden">
+								{messages.length === 0 ? (
+								<div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-8">
+									<div className="space-y-3">
+									<h1 className="text-4xl font-extrabold text-gray-900">Welcome</h1>
+									<p className="text-2xl text-gray-700">How was your day ?</p>
+									</div>
+									<InitialMood onSelectMood={handleMoodSelect} />
+								</div>
+								) : (
+								<ChatThread messages={messages} />
+								)
+								}
+
+								<div className="p-6 max-w-4xl w-full mx-auto">
+								<Input
+									value={inputVal}
+									onChange={(e) => setInputVal(e.target.value)}
+									onSubmit={handleSubmit}
+									placeholder={messages.length === 0 ? "What is your question" : "Reply..."}
+								/>
+								</div>
+							</div>
+						)}
+					</main>
+				</>
 			)}
-		</main>
 		</div>
 	);
 }
