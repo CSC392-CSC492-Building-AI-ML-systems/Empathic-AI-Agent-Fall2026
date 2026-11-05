@@ -2,12 +2,13 @@
 
 Every agent the eval harness measures (prompted baselines, the backend's
 Clarification Service, fine-tuned models) implements `Agent`, so all of them
-are scored the same way. `kind` mirrors the `messages.kind` column.
+are scored the same way. Only a new reply has a `kind`; past messages are just
+role and content, same as the messages table.
 """
 
 from typing import Literal, Protocol
 
-from pydantic import BaseModel, field_validator, model_validator
+from pydantic import BaseModel, field_validator
 
 Kind = Literal["clarify", "answer"]
 
@@ -16,16 +17,7 @@ class Turn(BaseModel):
     """A single message in a conversation, as stored in the messages table"""
 
     role: Literal["user", "assistant"]
-    kind: Kind | None = None
     content: str
-
-    @model_validator(mode="after")
-    def check_kind_matches_role(self) -> "Turn":
-        if self.role == "assistant" and self.kind is None:
-            raise ValueError("assistant turns must have a kind")
-        if self.role == "user" and self.kind is not None:
-            raise ValueError("user turns must not have a kind")
-        return self
 
 
 class AgentReply(BaseModel):
