@@ -6,3 +6,4 @@ psycopg[binary]>=3.3.6
 psycopg_pool>=3.3.3
 uvicorn>=0.53
 huggingface-hub
+bcrypt
