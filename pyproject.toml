@@ -23,6 +23,7 @@ dev = [
     "pytest>=9.1.1",
     "ruff>=0.16.9",
 ]
+eval = []
 
 [tool.fastapi]
 entrypoint = "backend.src.main:app"
