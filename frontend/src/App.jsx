@@ -6,7 +6,6 @@ import { ChatThread } from './components/chat/ChatThread';
 import { PastChatsView } from './components/views/PastChatsView';
 import { LoginView } from './components/views/LoginView';
 import { SettingsView } from './components/views/SettingsView';
-import { SignupView } from './components/views/SignupView';
 import './App.css';
 
 function App() {
@@ -30,6 +29,7 @@ function App() {
 			console.log("Current session id: ", session.session_id);
 		}
 		catch (error) {
+			console.log(error);
 			console.log("Error in getting a new session id");
 		}
 	}
@@ -163,12 +163,6 @@ function App() {
 			{activeTab === 'login' ? (
 				<LoginView
 					onBackToChat={() => setActiveTab('chat')}
-					onSwitchToSignup={() => setActiveTab('signup')}
-				/>
-			) : activeTab === 'signup' ? (
-				<SignupView
-					onBackToChat={() => setActiveTab('chat')}
-					onBackToLogin={() => setActiveTab('login')}
 				/>
 			) : (
 				<>

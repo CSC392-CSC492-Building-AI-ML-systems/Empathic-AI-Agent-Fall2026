@@ -4,9 +4,9 @@ import { Input } from '../buttons/Input';
 import { YesOrNoButton } from '../buttons/YesOrNoButton';
 
 
-export function LoginView({onBackToChat, onSwitchToSignup}) {
+export function LoginView({onBackToChat}) {
 
-    const [messages, setMessages] = useState([
+    const [messages, setMessages] = useState(() => [
         { id: Date.now(), sender: 'sam', text: "Hi! I'm Sam :) What's your name?", timestamp: new Date().toISOString() }
     ]);
     
@@ -103,7 +103,7 @@ export function LoginView({onBackToChat, onSwitchToSignup}) {
                 return;
             }
             
-            const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?])[^\s]+$/;
+            const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[]{};':"\\|,.<>\/?])[^\s]+$/;
             if (!passwordRegex.test(trimmedInput)) {
                 setError('Hey, your password is not the most secure right now... Try to use at least one uppercase, one lowercase, one number, and one special character!');
                 return;
@@ -121,6 +121,9 @@ export function LoginView({onBackToChat, onSwitchToSignup}) {
             };
             
             setMessages((prev) => [...prev, doneMsg]);
+            // for debugging rn
+            // WILL SEND TO BACKEND
+            console.log(password);
             setInputVal('');
             setStatus('done')
         }
@@ -159,6 +162,9 @@ export function LoginView({onBackToChat, onSwitchToSignup}) {
 
             setMessages((prev) => [...prev, userMsg, passwordMsg]);
             setEmail(pendingEmail);
+            // for debugging rn 
+            // WILL SEND TO BACKEND
+            console.log(email);
             setStatus('password');
         }
     };

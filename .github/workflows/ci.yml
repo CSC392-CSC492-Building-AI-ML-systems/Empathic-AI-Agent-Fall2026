@@ -1,0 +1,94 @@
+name: ci
+
+on:
+  push:
+    branches: [dev, main]
+  pull_request:
+    branches: [dev, main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version-file: "pyproject.toml"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Ruff lint
+        run: uv run ruff check .
+
+      - name: Ruff format check
+        run: uv run ruff format --check .
+
+      # not running tests yet cuz we dont want to spend too much on aws
+      #- name: Run tests
+        #run: uv run pytest tests backend/src/tests --ignore=tests/eval
+
+  frontend-build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - run: npm ci
+      - run: npm test --if-present
+      - name: ESLint
+        run: npx eslint .
+      - run: npm run build
+
+  docker-build:
+    needs: [backend-test, frontend-build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup docker
+        uses: docker/setup-buildx-action@v3
+
+      - name: Create .env from examples
+        run: cp .env.example .env
+
+      - name: Validate compose file
+        run: docker compose config -q
+
+      - name: Build backend image
+        run: docker compose build backend
+
+      - name: Start stack and check health
+        run: |
+          docker compose up -d --build
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:8000/health && exit 0
+            sleep 2
+          done
+          docker compose logs
+          exit 1
+
+  
