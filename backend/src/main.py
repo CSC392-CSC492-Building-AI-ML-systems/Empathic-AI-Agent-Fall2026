@@ -7,7 +7,7 @@ from fastapi import Depends, FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from .api.config import Settings
-from .api.routers import health, session
+from .api.routers import health, session, login
 from .database.connection import create_pool
 from .database.dao.message_dao import MessageDao
 from .database.dao.session_dao import SessionDao
@@ -45,6 +45,7 @@ app.add_middleware(
 
 app.include_router(health.router)
 app.include_router(session.router)
+app.include_router(login.router)
 
 
 @app.get("/")

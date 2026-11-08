@@ -26,19 +26,20 @@ class logout(BaseModel):
 
 router = APIRouter(
     prefix="/login",
-    tags=["session"],
+    tags=["login"],
     responses={404: {"description": "Not found"}},
 )
 
-@router.get("/verify_email")
+@router.post("/verify_email")
 async def check_email(
     request: Request,
-    email: email
+    user_email: email
 ): 
     user_dao = request.app.state.user_dao
-    return {"verified": str(user_dao.email_exists(email.email))}
+    verified = user_dao.email_exists(user_email.email)
+    return {"verified": str(verified)}
 
-@router.get("/create_account", status_code=status.HTTP_201_CREATED)
+@router.post("/create_account", status_code=status.HTTP_201_CREATED)
 async def create_account(
     request: Request,
     response: Response,
@@ -55,7 +56,7 @@ async def create_account(
     hash[cookie] = user_id
     return {"user_id": str(cookie)}
 
-@router.get("/")
+@router.post("/")
 async def login(
      request: Request,
      response: Response,
@@ -77,6 +78,9 @@ async def logout(
      request: Request,
      cache: logout
 ):
-     hash = request.app.session_hash
-     del hash[cache]
-     return {"logout": "successful"}
+    hash = request.app.session_hash
+    if cache in hash:
+        del hash[cache]
+        return {"logout": "successful"}
+    else:
+         return {"logout": "unsucessful"}
