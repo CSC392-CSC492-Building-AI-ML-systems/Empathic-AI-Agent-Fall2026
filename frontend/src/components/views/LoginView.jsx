@@ -103,7 +103,7 @@ export function LoginView({onBackToChat}) {
                 return;
             }
             
-            const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[]{};':"\\|,.<>\/?])[^\s]+$/;
+            const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z0-9]).+$/;
             if (!passwordRegex.test(trimmedInput)) {
                 setError('Hey, your password is not the most secure right now... Try to use at least one uppercase, one lowercase, one number, and one special character!');
                 return;
