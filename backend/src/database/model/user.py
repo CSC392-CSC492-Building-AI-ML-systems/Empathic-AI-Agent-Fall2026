@@ -1,5 +1,6 @@
 from uuid import UUID
 
+
 class User:
     """Class representing an entry in the users table"""
 

@@ -1,9 +1,9 @@
 from pathlib import Path
 from uuid import UUID
+
 import psycopg
 
 from .connection import get_conn_info
-
 
 TEST_USER_ID = UUID("00000000-0000-0000-0000-000000000001")
 
