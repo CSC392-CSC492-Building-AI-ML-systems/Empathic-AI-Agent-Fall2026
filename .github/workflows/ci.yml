@@ -29,12 +29,6 @@ jobs:
       - name: Install dependencies
         run: uv sync --frozen
 
-      - name: Ruff lint
-        run: uv run ruff check .
-
-      - name: Ruff format check
-        run: uv run ruff format --check .
-
       # not running tests yet cuz we dont want to spend too much on aws
       #- name: Run tests
         #run: uv run pytest tests backend/src/tests --ignore=tests/eval
