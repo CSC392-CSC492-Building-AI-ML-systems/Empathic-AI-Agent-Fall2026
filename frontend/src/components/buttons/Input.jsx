@@ -1,10 +1,10 @@
-import { SearchIcon } from './Icons';
 
-export function Input({ value, onChange, onSubmit, placeholder }) {
+
+export function Input({ value, onChange, onSubmit, placeholder, type="text" }) {
   return (
     <form onSubmit={onSubmit} className="relative flex items-center w-full">
       <input
-        type="text"
+        type={type}
         value={value}
         onChange={onChange}
         placeholder={placeholder}
@@ -14,7 +14,6 @@ export function Input({ value, onChange, onSubmit, placeholder }) {
         type="submit"
         className="absolute right-4 p-1 rounded-full text-gray-400 hover:text-gray-600 transition-colors"
       >
-        <SearchIcon />
       </button>
     </form>
   );

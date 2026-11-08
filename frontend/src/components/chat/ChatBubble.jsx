@@ -1,7 +1,7 @@
 import { HeartIcon, UserIcon } from '../buttons/Icons';
 
 export function ChatBubble({ sender, text, timestamp }) {
-	const isBot = sender === 'chat';
+	const isBot = sender === 'sam';
 
 	// adding in a place for time
 	const formattedTime = timestamp 
@@ -21,7 +21,7 @@ export function ChatBubble({ sender, text, timestamp }) {
 				}`}
 				>
 				{isBot ? <HeartIcon /> : <UserIcon />}
-				<span>{isBot ? 'CHAT' : 'USER'}</span>
+				<span>{isBot ? 'SAM' : 'USER'}</span>
 				</div>
 				{formattedTime && (
 					<span className="text-[10px] text-gray-400 font-medium">
