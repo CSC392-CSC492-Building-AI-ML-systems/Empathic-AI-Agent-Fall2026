@@ -1,7 +1,11 @@
 from pathlib import Path
+from uuid import UUID
 import psycopg
 
 from .connection import get_conn_info
+
+
+TEST_USER_ID = UUID("00000000-0000-0000-0000-000000000001")
 
 def apply_migrations(connection: psycopg.Connection) -> None:
     """Apply sql migrations to database
@@ -37,6 +41,15 @@ def apply_migrations(connection: psycopg.Connection) -> None:
                 "INSERT INTO migrations (path_name) VALUES (%s)",
                 (path.name,)
             )
+        connection.execute(
+            """
+            INSERT INTO users (id, first_name, last_name, email, password)
+            VALUES (%s, %s, %s, %s, %s)
+            ON CONFLICT (id) DO NOTHING
+            """,
+            (TEST_USER_ID, "Tyler", "Holden", "tyler@the.goat", "ilovetylerholden"),
+        )
+
 
 def main() -> None:
     with psycopg.connect(get_conn_info()) as connection:

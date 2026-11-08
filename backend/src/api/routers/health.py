@@ -1,11 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException
-
-# from ..dependencies import get_token_header
+from fastapi import APIRouter
 
 router = APIRouter(
     prefix="/health",
     tags=["health"],
-    # dependencies=[Depends(get_token_header)],
     responses={404: {"description": "Not found"}},
 )
 

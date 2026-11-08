@@ -15,7 +15,7 @@ export function ChatThread({ messages, isLoading }) {
 	return (
 		<div className="flex-1 overflow-y-auto p-12 space-y-6 max-w-4xl w-full mx-auto">
 		{messages.map((msg) => (
-			<ChatBubble key={msg.id} sender={msg.sender} text={msg.text} />
+			<ChatBubble key={msg.id} sender={msg.sender} text={msg.text} timestamp={msg.timestamp} />
 		))}
 
 		{isLoading && (
