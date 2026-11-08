@@ -6,6 +6,7 @@ from psycopg_pool import AsyncConnectionPool
 
 from ..model.user import User
 
+
 class UserDao:
     """Manage user records in the database."""
 
@@ -27,9 +28,8 @@ class UserDao:
             VALUES (%s, %s, %s, %s, %s, %s, %s)
         """
         try:
-            async with self.pool.connection() as connection:
-                async with connection.cursor() as cursor:
-                    await cursor.execute(sql,(user_id, profile, first_name, last_name, nickname, email, password),)
+            async with self.pool.connection() as connection, connection.cursor() as cursor:
+                await cursor.execute(sql,(user_id, profile, first_name, last_name, nickname, email, password),)
         except Error:
             return None
 
@@ -40,10 +40,9 @@ class UserDao:
         """Check whether an email is already in use"""
         sql = "SELECT EXISTS (SELECT 1 FROM users WHERE email = %s)"
 
-        async with self.pool.connection() as connection:
-            async with connection.cursor() as cursor:
-                await cursor.execute(sql, (email,))
-                row = await cursor.fetchone()
+        async with self.pool.connection() as connection, connection.cursor() as cursor:
+            await cursor.execute(sql, (email,))
+            row = await cursor.fetchone()
 
         if row is None:
             return False
@@ -54,10 +53,9 @@ class UserDao:
         """Return the user's ID if their email and password match"""
         sql = "SELECT id, password FROM users WHERE email = %s"
 
-        async with self.pool.connection() as connection:
-            async with connection.cursor() as cursor:
-                await cursor.execute(sql, (email,))
-                row = await cursor.fetchone()
+        async with self.pool.connection() as connection, connection.cursor() as cursor:
+            await cursor.execute(sql, (email,))
+            row = await cursor.fetchone()
 
         if row is None:
             return None
@@ -80,10 +78,9 @@ class UserDao:
             FROM users WHERE id = %s
         """
 
-        async with self.pool.connection() as connection:
-            async with connection.cursor() as cursor:
-                await cursor.execute(sql, (user_id,))
-                row = await cursor.fetchone()
+        async with self.pool.connection() as connection, connection.cursor() as cursor:
+            await cursor.execute(sql, (user_id,))
+            row = await cursor.fetchone()
 
         if row is None:
             return None
@@ -112,10 +109,9 @@ class UserDao:
             WHERE id = %s RETURNING id
         """
         try:
-            async with self.pool.connection() as connection:
-                async with connection.cursor() as cursor:
-                    await cursor.execute(sql,(first_name, last_name, email, password, profile, nickname, user_id),)
-                    row = await cursor.fetchone()
+            async with self.pool.connection() as connection, connection.cursor() as cursor:
+                await cursor.execute(sql,(first_name, last_name, email, password, profile, nickname, user_id),)
+                row = await cursor.fetchone()
 
         except Error:
             return False
@@ -129,6 +125,5 @@ class UserDao:
             DELETE FROM users
             WHERE id = %s
         """
-        async with self.pool.connection() as connection:
-            async with connection.cursor() as cursor:
-                await cursor.execute(sql, (user_id,))
+        async with self.pool.connection() as connection, connection.cursor() as cursor:
+            await cursor.execute(sql, (user_id,))

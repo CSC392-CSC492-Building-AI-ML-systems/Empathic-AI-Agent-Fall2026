@@ -1,7 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Request
-from pydantic import BaseModel
-from ...agent import fine_tune as model
 import uuid
+
+from fastapi import APIRouter, Request, status
+from pydantic import BaseModel
+
+from ...agent import fine_tune as model
+
 
 class Message(BaseModel): # edit
     message: str 
@@ -17,7 +20,7 @@ router = APIRouter(
 async def start_conversation_state(
     request : Request
 ):
-    user_dao = request.app.state.user_dao
+    #user_dao = request.app.state.user_dao
     session_dao = request.app.state.session_dao
 
     TEST_USER_ID = uuid.UUID("00000000-0000-0000-0000-000000000001")
