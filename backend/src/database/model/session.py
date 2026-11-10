@@ -7,8 +7,17 @@ from .message import Message
 class Session:
     """Class representing an entry in the session table"""
 
-    def __init__(self,  session_id: UUID, created_at: datetime, name: str | None = None) -> None:
+    def __init__(self,
+                 session_id: UUID,
+                 created_at: datetime,
+                 context: str,
+                 tool_context: str,
+                 terminated: bool,
+                 name: str | None = None) -> None:
         self.session_id = session_id
+        self.context = context
+        self.tool_context = tool_context
+        self.terminated = terminated
         self.name = name
         self.created_at = created_at
         self.messages: list[Message] = []
@@ -31,6 +40,8 @@ class Session:
     def get_conversation_for_frontend(self) -> list[dict[str, str, datetime]]:
         convo_history = []
         for message in self.messages:
+            if message.get_role() == "tool":
+                continue
             convo_history.append({"role": message.get_role(),
                                   "content": message.get_content(),
                                   "created_at": message.get_created_at()})

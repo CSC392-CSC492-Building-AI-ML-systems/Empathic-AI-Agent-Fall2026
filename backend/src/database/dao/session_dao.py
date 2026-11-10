@@ -13,13 +13,18 @@ class SessionDao:
         self.pool = pool
         self.message_dao = message_dao
 
-    async def create_session(self, user_id: UUID, name: str | None = None) -> UUID:
+    async def create_session(self,
+                             user_id: UUID,
+                             context: str,
+                             tool_context: str,
+                             terminated: bool,
+                             name: str | None = None) -> UUID:
         """Create a session and return its ID"""
         session_id = uuid4()
         async with self.pool.connection() as connection, connection.cursor() as cursor:
             await cursor.execute(
-                "INSERT INTO sessions (id, user_id, name) VALUES (%s, %s, %s)",
-                (session_id, user_id, name),
+                "INSERT INTO sessions (id, user_id, name, context, tool_context, terminated) VALUES (%s, %s, %s, %s, %s, %s)",
+                (session_id, user_id, name, context, tool_context, terminated),
             )
         return session_id
 
@@ -27,7 +32,7 @@ class SessionDao:
         """Form and return a Session object given session id"""
 
         sql = """
-            SELECT name, created_at FROM sessions
+            SELECT created_at, context, tool_context, terminated, name FROM sessions
             WHERE id = %s
         """
         async with self.pool.connection() as connection, connection.cursor() as cursor:
@@ -36,7 +41,7 @@ class SessionDao:
         if row is None:
             raise KeyError(f"Session {session_id} does not exist")
 
-        session = Session(session_id, row[1], row[0])
+        session = Session(session_id, row[0], row[1], row[2], row[3], row[4])
         messages = await self.message_dao.get_messages(session_id)
         for message in messages:
             session.add_message(message)
