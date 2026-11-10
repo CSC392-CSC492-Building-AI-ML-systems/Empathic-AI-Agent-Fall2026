@@ -4,6 +4,7 @@ from fastapi import APIRouter, Request, status
 from pydantic import BaseModel
 
 from ...agent import fine_tune as model
+from ...agent.job import Job
 
 
 class Message(BaseModel): # edit
@@ -36,20 +37,18 @@ async def get_conversation_state(
     return None
 
 @router.post("/{session_id}/message")
-async def send_conversation_state(
-    request : Request,
-    session_id: str,
-    message: Message
-):
+async def send_conversation_state(request: Request, session_id: str, message: Message):
+
     message_dao = request.app.state.message_dao
     session_dao = request.app.state.session_dao
 
-    # add user message to db
-    await message_dao.add_message("user", message.message, session_id)
+    job = Job(message.message, message_dao, session_dao, session_id)
+    result = await job.run()
 
-    # get session state
-    conversation = await session_dao.get_session(session_id)
-    convo_history = conversation.get_conversation_for_model()
+    return {"response": result}
+
+
+
 
     # send session state to model and get response
     response = await model.send_model(convo_history)
