@@ -32,7 +32,7 @@ class SessionDao:
         """Form and return a Session object given session id"""
 
         sql = """
-            SELECT created_at, context, tool_context, terminated, name FROM sessions
+            SELECT created_at, context, tool_context, terminated, user_id, name FROM sessions
             WHERE id = %s
         """
         async with self.pool.connection() as connection, connection.cursor() as cursor:
@@ -41,7 +41,7 @@ class SessionDao:
         if row is None:
             raise KeyError(f"Session {session_id} does not exist")
 
-        session = Session(session_id, row[0], row[1], row[2], row[3], row[4])
+        session = Session(session_id, row[0], row[1], row[2], row[3], row[4], row[5])
         messages = await self.message_dao.get_messages(session_id)
         for message in messages:
             session.add_message(message)
@@ -67,6 +67,16 @@ class SessionDao:
         """Deletes session and all messages related to a session_id from database"""
         sql = """
             DELETE FROM sessions
+            WHERE id = %s
+        """
+        async with self.pool.connection() as connection, connection.cursor() as cursor:
+            await cursor.execute(sql, (session_id,))
+
+    async def terminate_session(self, session_id: UUID) -> None:
+        """Terminates a session by setting the terminated flag to true"""
+        sql = """
+            UPDATE sessions
+            SET terminated = true
             WHERE id = %s
         """
         async with self.pool.connection() as connection, connection.cursor() as cursor:

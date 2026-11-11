@@ -41,8 +41,9 @@ async def send_conversation_state(request: Request, session_id: str, message: Me
 
     message_dao = request.app.state.message_dao
     session_dao = request.app.state.session_dao
+    user_dao = request.app.state.user_dao
 
-    job = Job(message.message, message_dao, session_dao, session_id)
+    job = Job(message.message, message_dao, session_dao, user_dao, session_id, 10)
     result = await job.run()
 
     return {"response": result}

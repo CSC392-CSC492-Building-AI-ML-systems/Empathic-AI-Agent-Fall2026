@@ -13,11 +13,13 @@ class Session:
                  context: str,
                  tool_context: str,
                  terminated: bool,
+                 user_id: UUID,
                  name: str | None = None) -> None:
         self.session_id = session_id
         self.context = context
         self.tool_context = tool_context
         self.terminated = terminated
+        self.user_id = user_id
         self.name = name
         self.created_at = created_at
         self.messages: list[Message] = []
