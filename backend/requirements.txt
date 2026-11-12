@@ -1,4 +1,5 @@
-fastapi>=0.141.1
+fastapi[standard]>=0.141.1
+openrouter>=1.1.16,<2
 pydantic>=2.13.4
 pydantic-settings>=2.15.0
 requests>=2.34.2
