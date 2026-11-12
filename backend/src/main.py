@@ -7,11 +7,12 @@ from fastapi import Depends, FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from .api.config import Settings
-from .api.routers import health, session, login
+from .api.routers import health, login, session
 from .database.connection import create_pool
 from .database.dao.message_dao import MessageDao
 from .database.dao.session_dao import SessionDao
 from .database.dao.user_dao import UserDao
+
 
 @lru_cache
 def get_settings() -> Settings:
