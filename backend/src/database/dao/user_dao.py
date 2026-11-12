@@ -56,9 +56,9 @@ class UserDao:
 
         if row is None:
             return None
-
+        
         try:
-            matches = bcrypt.checkpw(password.encode('utf-8'), row[1].encode())
+            matches = bcrypt.checkpw(password.encode('utf-8'), row[1].encode('utf-8'))
         except ValueError:
             return None
 

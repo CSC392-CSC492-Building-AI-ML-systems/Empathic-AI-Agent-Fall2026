@@ -54,10 +54,10 @@ class SessionDao:
             session.add_message(message)
         return session
 
-    async def get_session_ids(self, user_id: UUID) -> list[UUID]:
+    async def get_session_ids(self, user_id: UUID) -> list[tuple[UUID, str]]:
         """Return a user's session IDs in creation order."""
         sql = """
-            SELECT id FROM sessions
+            SELECT id, name FROM sessions
             WHERE user_id = %s
             ORDER BY created_at ASC, id ASC
         """
@@ -67,7 +67,7 @@ class SessionDao:
 
         sessions = []
         for row in rows:
-            sessions.append(row[0])
+            sessions.append((row[0], row[1]))
         return sessions
 
     async def del_session(self, session_id: UUID) -> None:
