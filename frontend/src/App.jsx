@@ -6,6 +6,7 @@ import { ChatThread } from './components/chat/ChatThread';
 import { PastChatsView } from './components/views/PastChatsView';
 import { LoginView } from './components/views/LoginView';
 import { SettingsView } from './components/views/SettingsView';
+import { AgentThinking } from './components/chat/AgentThinking';
 import './App.css';
 
 function App() {
@@ -14,6 +15,9 @@ function App() {
 	const [inputVal, setInputVal] = useState('');
 	const [sessionId, setSessionId] = useState(null);
 	const sessionFetched = useRef(false);
+	// to simulate thinking -> more empathetic (?)
+	const waitOneSecond = () => new Promise((resolve) => setTimeout(resolve, 1000));
+	const [isTyping, setIsTyping] = useState(false);
 
 	// getting session id
 	const makeNewSession = async () => {
@@ -100,6 +104,9 @@ function App() {
 	// get msg from user and display
 	const handleSubmit = async (e) => {
     	e.preventDefault();
+
+		// so user cant send a msg when the agent is responding
+		if (isTyping) return;
     	const trimmedInput = inputVal.trim();
     	if (!trimmedInput) return;
 
@@ -120,10 +127,14 @@ function App() {
 		};
 
 		setInputVal('');
+		setIsTyping(true);
 
 		// sending msg to backend and receiving response
-		const agentResponse = await sendToBackend(userMessagePayload);
-
+		// but we wait and have the delay
+		const [agentResponse] = await Promise.all([
+			sendToBackend(userMessagePayload),
+			waitOneSecond()
+		]);
 
 		// will need to get response from backend
 		// display agent response
@@ -135,7 +146,7 @@ function App() {
 		};
 
 		setMessages((prev) => [...prev, agentMsg]);
-		
+		setIsTyping(false);
 		
  	};
 
@@ -194,9 +205,11 @@ function App() {
 									<InitialMood onSelectMood={handleMoodSelect} />
 								</div>
 								) : (
-								<ChatThread messages={messages} />
-								)
-								}
+								<div className="flex-1 flex flex-col overflow-y-auto">
+									{/* for the thinking before responding of the agent */}
+									<ChatThread messages={messages} isTyping={isTyping} />
+								</div>
+								)}
 
 								<div className="p-6 max-w-4xl w-full mx-auto">
 								<Input
@@ -204,6 +217,7 @@ function App() {
 									onChange={(e) => setInputVal(e.target.value)}
 									onSubmit={handleSubmit}
 									placeholder={messages.length === 0 ? "What is your question" : "Reply..."}
+									
 								/>
 								</div>
 							</div>

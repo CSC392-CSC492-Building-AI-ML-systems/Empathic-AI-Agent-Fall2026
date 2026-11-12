@@ -6,15 +6,20 @@ import { YesOrNoButton } from '../buttons/YesOrNoButton';
 
 export function LoginView({onBackToChat}) {
 
+    // initial message from agent
     const [messages, setMessages] = useState(() => [
-        { id: Date.now(), sender: 'sam', text: "Hi! I'm Sam :) What's your name?", timestamp: new Date().toISOString() }
+        { id: Date.now(), sender: 'sam', text: "Hi! I'm Sam :) Would you like to login or signup?", timestamp: new Date().toISOString() }
     ]);
     
     const [inputVal, setInputVal] = useState('');
     const [error, setError] = useState('');
 
     // status = 'name' | 'confirmName' | 'email' | 'confirmEmail' | 'password' | 'confirmPassword' | 'done'
-    const [status, setStatus] = useState('name');
+    const [status, setStatus] = useState('');
+    // default to login -> mainly used at the password state
+    // login + password -> ask for their set password
+    // signup + password -> ask them to create a password
+    const [loginOrSignup, setLoginOrSignup] = useState('login');
 
     // only confirm name after user types in a valid input
     const [username, setUsername] = useState('');
@@ -26,16 +31,106 @@ export function LoginView({onBackToChat}) {
     const [password, setPassword] = useState('');
     // so we hide/show password in the input
     const [showPassword, setShowPassword] = useState(false);
+
+    // to simulate thinking -> more empathetic (?)
+	const waitOneSecond = () => new Promise((resolve) => setTimeout(resolve, 1000));
+	const [isTyping, setIsTyping] = useState(false);
+
+    const BASE = "http://localhost:8000";
     
     // TODO !!
     // ADD IN POPUP TO CONFRIM IF NAME TYPED IN CORRECTLY
     // ADD IN CHECKS FOR EMAILS AS WELL
     // HV CHECKS FOR EVERYTHING TO DOUBLE CHECK
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
+        // so user cant send a msg when the agent is responding
+		if (isTyping) return;
+
         const trimmedInput = inputVal.trim();
         if (!trimmedInput) return;
+        // check for login/signup
+        if (status === '') {
+            // user wants to login
+            if (trimmedInput.toLowerCase() === 'login') {
+                // immediately ask user for their email
+                
+                const userMsg = { 
+                    id: Date.now(), 
+                    sender: 'user', 
+                    text: trimmedInput, 
+                    timestamp: new Date().toISOString()
+                };
+
+
+                const confirmLoginMsg = {
+                    id: Date.now() + 1,
+                    sender: 'sam',
+                    text: `Ok, I will help you login now! Please give me your email`,
+                    timestamp: new Date().toISOString()
+                };
+
+                setMessages((prev) => [...prev, userMsg]);
+                setIsTyping(true);
+                setInputVal('');
+                
+                await waitOneSecond();
+
+                setMessages((prev) => [...prev, confirmLoginMsg]);
+                setIsTyping(false);
+
+                
+                setStatus('email');
+                setLoginOrSignup('login');
+            } 
+
+            // user wants to signup
+            else if (trimmedInput.toLowerCase() === 'signup') {
+                // ask user for their name first
+
+                const userMsg = { 
+                    id: Date.now(), 
+                    sender: 'user', 
+                    text: trimmedInput, 
+                    timestamp: new Date().toISOString()
+                };
+
+
+                const confirmSignupMsg = {
+                    id: Date.now() + 1,
+                    sender: 'sam',
+                    text: `Ok, I will help you signup now!`,
+                    timestamp: new Date().toISOString()
+                };
+
+                const askForNameMsg = {
+                    id: Date.now() + 2,
+                    sender: 'sam',
+                    text: `To start off, what's your name?`,
+                    timestamp: new Date().toISOString()
+                };
+
+                setMessages((prev) => [...prev, userMsg, confirmSignupMsg]);
+                setIsTyping(true);
+                setInputVal('');
+                await waitOneSecond();
+
+                setMessages((prev) => [...prev, askForNameMsg]);
+                setIsTyping(false);
+
+                
+                setStatus('name');
+                setLoginOrSignup('signup');
+            }
+
+            else {
+                setError('Please enter login or signup');
+                return;
+            }
+
+            setError('');
+        }
 
         // check for username
         if (status === 'name') {
@@ -61,8 +156,14 @@ export function LoginView({onBackToChat}) {
                 timestamp: new Date().toISOString()
             };
 
-            setMessages((prev) => [...prev, userMsg, confirmNameMsg]);
+            setMessages((prev) => [...prev, userMsg]);
+            setIsTyping(true);
             setInputVal('');
+            await waitOneSecond();
+
+            setMessages((prev) => [...prev, confirmNameMsg]);
+            setIsTyping(false);
+            
             setStatus('confirmName')
         }
 
@@ -90,25 +191,83 @@ export function LoginView({onBackToChat}) {
                 timestamp: new Date().toISOString()
             };
             
-            setMessages((prev) => [...prev, userMsg, confirmEmailMsg]);
+            setMessages((prev) => [...prev, userMsg]);
+            setIsTyping(true);
             setInputVal('');
+
+            await waitOneSecond();
+            setMessages((prev) => [...prev, confirmEmailMsg]);
+            setIsTyping(false);
+            
             setStatus('confirmEmail')
         }
 
         // check for password
         else if (status === 'password') {
-            // check for length first
-            if (trimmedInput.length < 8){
-                setError('Hey, your password will be more secure if you have more than 8 characters!');
-                return;
-            }
-            
-            const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z0-9]).+$/;
-            if (!passwordRegex.test(trimmedInput)) {
-                setError('Hey, your password is not the most secure right now... Try to use at least one uppercase, one lowercase, one number, and one special character!');
-                return;
+            // only perform checks for correct password strength when the user is signing up 
+            if (loginOrSignup === 'signup') {
+                // check for length first
+                if (trimmedInput.length < 8){
+                    setError('Hey, your password will be more secure if you have more than 8 characters!');
+                    return;
+                }
+                
+                const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z0-9]).+$/;
+                if (!passwordRegex.test(trimmedInput)) {
+                    setError('Hey, your password is not the most secure right now... Try to use at least one uppercase, one lowercase, one number, and one special character!');
+                    return;
+                }
             }
 
+            // what to do when logging in
+            if (loginOrSignup === 'login') {
+                // try to login to account and get the user id
+                const userId = await loginToAccount(trimmedInput);
+                console.log("the below is userID");
+                console.log(userId);
+                if (userId != null) {
+                    console.log("yay we are logged in");
+                    const text = "Ok :D we are all logged in now";
+                    setShowPassword(false);
+                    setPassword(trimmedInput);
+
+                    const doneMsg = {
+                        id: Date.now() + 1,
+                        sender: 'sam',
+                        text: `Ok :D I have all the info I need now. It was a pleasure to meet you ${username}!`,
+                        timestamp: new Date().toISOString()
+                    };
+                    
+                    setIsTyping(true);
+                    setInputVal('');
+                    await waitOneSecond();
+                    setIsTyping(false);
+
+                    setMessages((prev) => [...prev, doneMsg]);
+                    
+                    return;
+
+                }
+                // something wrong with password verification
+                else {
+                    console.log("password verification gone wrong -> wrong password match with email");
+                    const wrongPasswordMsg = {
+                        id: Date.now() + 1,
+                        sender: 'sam',
+                        text: `Hey, I think you entered in the wrong password, please try again!`,
+                        timestamp: new Date().toISOString()
+                    };
+                    setShowPassword(false);
+                    setInputVal('');
+                    setIsTyping(true);
+                    await waitOneSecond();
+                    setIsTyping(false);
+
+                    setMessages((prev) => [...prev, wrongPasswordMsg]);
+                    return;
+                }
+            }
+            
             setError('');
             setShowPassword(false);
             setPassword(trimmedInput);
@@ -120,17 +279,25 @@ export function LoginView({onBackToChat}) {
                 timestamp: new Date().toISOString()
             };
             
+            setIsTyping(true);
+            setInputVal('');
+            await waitOneSecond();
+            setIsTyping(false);
+
             setMessages((prev) => [...prev, doneMsg]);
             // for debugging rn
             // WILL SEND TO BACKEND
             console.log(password);
-            setInputVal('');
+            
             setStatus('done')
         }
         
     };
 
-    const handleConfirmYes = () => {
+    const handleConfirmYes = async () => {
+        // so user cant send a msg when the agent is responding
+		if (isTyping) return;
+
         const userMsg = { 
             id: Date.now(), 
             sender: 'user', 
@@ -147,20 +314,62 @@ export function LoginView({onBackToChat}) {
                 timestamp: new Date().toISOString() 
             };
 
-            setMessages((prev) => [...prev, userMsg, emailMsg]);
+            setMessages((prev) => [...prev, userMsg]);
+
+            setIsTyping(true);
+            await waitOneSecond();
+
+            setMessages((prev) => [...prev, emailMsg])
+            setIsTyping(false);
             setUsername(pendingName);
             setStatus('email');
         } 
 
         else if (status === 'confirmEmail') {
+            // after user says yes this is my email
+            // now we must verify with database
+            const emailExists = await verifyEmail(pendingEmail);
+            if (emailExists === null) {
+                console.log("issue with verifying email");
+            }
 
+            let tempText = '';
+            console.log(loginOrSignup);
+            // user is logging in -> ask for their password
+            if (loginOrSignup === 'login') {
+                if (emailExists === "true") {
+                    tempText = "Okay :) Please enter in your password so I can help you login";
+                }
+                else {
+                    console.log("trying to login but no account exists");
+                    return;
+                }
+                
+            }
+
+            if (loginOrSignup === 'signup') {
+                if (emailExists === 'false') {
+                    tempText = "Got it! Now please choose a password that is at least 8 characters";
+                }
+                else {
+                    console.log("trying to signup but account already exists");
+                    return;
+                }
+            }
+
+            console.log(tempText);
             const passwordMsg = { id: Date.now() + 1, 
                 sender: 'sam', 
-                text: "Got it! Now, please choose a password (at least 8 characters):", 
+                text: tempText, 
                 timestamp: new Date().toISOString() 
             };
 
-            setMessages((prev) => [...prev, userMsg, passwordMsg]);
+            setMessages((prev) => [...prev, userMsg]);
+            setIsTyping(true);
+            await waitOneSecond();
+
+            setMessages((prev) => [...prev, passwordMsg])
+            setIsTyping(false);
             setEmail(pendingEmail);
             // for debugging rn 
             // WILL SEND TO BACKEND
@@ -169,7 +378,10 @@ export function LoginView({onBackToChat}) {
         }
     };
 
-    const handleConfirmNo = () => {
+    const handleConfirmNo = async () => {
+        // so user cant send a msg when the agent is responding
+		if (isTyping) return;
+
         const userMsg = { 
             id: Date.now(), 
             sender: 'user', 
@@ -186,7 +398,13 @@ export function LoginView({onBackToChat}) {
                 timestamp: new Date().toISOString() 
             };
 
-            setMessages((prev) => [...prev, userMsg, retryMsg]);
+            setMessages((prev) => [...prev, userMsg]);
+
+            setIsTyping(true);
+            await waitOneSecond();
+
+            setMessages((prev) => [...prev, retryMsg])
+            setIsTyping(false);
             setStatus('name');
         } 
         else if (status === 'confirmEmail') {
@@ -197,13 +415,60 @@ export function LoginView({onBackToChat}) {
                 timestamp: new Date().toISOString() 
             };
 
-            setMessages((prev) => [...prev, userMsg, retryMsg]);
+            setMessages((prev) => [...prev, userMsg]);
+            setIsTyping(true);
+            await waitOneSecond();
+
+            setMessages((prev) => [...prev, retryMsg])
+            setIsTyping(false);
             setStatus('email');
         }
     };
 
     const isWaitingForConfirmation = status === 'confirmName' || status === 'confirmEmail';
 
+    const verifyEmail = async(email) => {
+        try {
+            const verifyEmailResponse = await fetch(`${BASE}/login/verify_email`, {
+                method: 'POST',
+                credentials: 'include', 
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email }),
+            });
+            const isVerifiedEmail = await verifyEmailResponse.json();
+            return isVerifiedEmail.verified;
+        }
+
+        catch (error) {
+            console.log(error);
+            console.log("error in verifying email");
+            return null;
+
+        }
+    };
+    
+    // AKA verifying your password
+    const loginToAccount = async(password) => {
+        // logging in is essentially also just verifying your password
+        // on success -> receive uuid from backend
+        // on fail -> uuid = None
+        try {
+            const loginResponse = await fetch(`${BASE}/`, {
+                method: 'POST',
+                credentials: 'include',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify( {"password": password, "email": email} ),
+            });
+            const isLoggedIn = await loginResponse.json();
+            return isLogggedIn.user_id;
+        }
+        
+        catch (error) {
+            console.log(error);
+            console.log("error in logging in - email and password dont match");
+            return null;
+        }
+    };
 
     return (
         <div className="flex-1 flex flex-col h-full justify-between overflow-hidden">
@@ -212,7 +477,7 @@ export function LoginView({onBackToChat}) {
             </div>
 
             <div className="flex-1 flex flex-col h-full justify-between overflow-hidden">
-                <ChatThread messages={messages} />
+                <ChatThread messages={messages} isTyping={isTyping} />
 
                     <div className="p-6 max-w-4xl w-full mx-auto">
 
@@ -226,6 +491,7 @@ export function LoginView({onBackToChat}) {
                             <YesOrNoButton 
                             onYes={handleConfirmYes} 
                             onNo={handleConfirmNo} 
+                            disabled={isTyping}
                             />
                         ) : status === 'done' ? (
                             <p className="text-center text-sm text-gray-500">Completed Login</p>
