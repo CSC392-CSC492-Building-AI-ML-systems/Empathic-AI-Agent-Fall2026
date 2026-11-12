@@ -5,6 +5,7 @@ from openrouter import OpenRouter
 from pydantic import BaseModel
 
 from ...agent import fine_tune as model
+from ...agent.job import Job
 
 
 class Message(BaseModel): 
@@ -25,12 +26,13 @@ async def start_conversation_state(
     """starts a conversation with a message. Returns the agent's response and session id."""
     session_dao = request.app.state.session_dao
     message_dao = request.app.state.message_dao
-    hash = request.app.state.session_hash
+    user_dao = request.app.state.user_dao
+    s_hash = request.app.state.session_hash
 
     # ensures valid user login before usage
     cookie = request.cookies.get("Cookie")
-    if cookie in hash:
-        user_id = hash[cookie]
+    if cookie in s_hash:
+        user_id = s_hash[cookie]
     else:
         raise HTTPException(status_code=401, detail="Invalid or missing authentication cookie")
 
@@ -38,16 +40,14 @@ async def start_conversation_state(
     session_name = await get_session_name(message.message)
 
     # create new session for user with generated name
-    session_id = await session_dao.create_session(user_id, session_name)
+    session_id = await session_dao.create_session(user_id=user_id,
+                                                  name=session_name,
+                                                  context="",
+                                                  tool_context="",
+                                                  terminated=False)
 
-    # add message to session
-    await message_dao.add_message("user", message.message, session_id)
-
-    # get response from agent and add message to session
-    response = await model.send_model([{"role": "user", "content": message.message}])
-    if (response == None):
-        response = ""
-    await message_dao.add_message("assistant", response, session_id)
+    job = Job(message.message, message_dao, session_dao, user_dao, session_id, 20)
+    response = await job.run()
 
     return {"session_id": session_id, "response": response}
 
@@ -78,27 +78,16 @@ async def send_conversation_state(
     """sends a message to session with {session_id}. Returns the agent's response."""
     message_dao = request.app.state.message_dao
     session_dao = request.app.state.session_dao
-    hash = request.app.state.session_hash
+    user_dao = request.app.state.user_dao
+    s_hash = request.app.state.session_hash
 
     # ensures valid user login before usage
     cookie = request.cookies.get("Cookie")
-    if cookie not in hash:
+    if cookie not in s_hash:
         raise HTTPException(status_code=401, detail="Invalid or missing authentication cookie")
 
-    # add user message to db
-    await message_dao.add_message("user", message.message, session_id)
-
-    # get session state
-    conversation = await session_dao.get_session(session_id)
-    convo_history = conversation.get_conversation_for_model()
-
-    # send session state to model and get response
-    response = await model.send_model(convo_history)
-    if (response == None):
-        response = ""
-
-    # add assistant response to db
-    await message_dao.add_message("assistant", response, session_id)
+    job = Job(message.message, message_dao, session_dao, user_dao, session_id, 20)
+    response = await job.run()
 
     # respond
     return {"response": response}
@@ -123,7 +112,7 @@ async def get_session_name(msg: str) -> str:
     """returns a session name given an initial prompt."""
     # return "temp"
 
-    with OpenRouter(api_key=os.getenv("OPENROUTER_API_KEY")) as client:
+    async with OpenRouter(api_key=os.getenv("OPENROUTER_API_KEY")) as client:
         response = client.responses.send(
             model="google/gemini-3.8-flash", # Replace with any OpenRouter model ID
             input="Generate a short and simple chat title according to the request:" + msg

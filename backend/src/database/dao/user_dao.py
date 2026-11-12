@@ -22,7 +22,7 @@ class UserDao:
         user_id = uuid4()
         sql = """
             INSERT INTO users (id, name, email, password)
-            VALUES (%s, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s)
         """
         try:
             async with self.pool.connection() as connection, connection.cursor() as cursor:
