@@ -41,7 +41,14 @@ class SessionDao:
         if row is None:
             raise KeyError(f"Session {session_id} does not exist")
 
-        session = Session(session_id, row[0], row[1], row[2], row[3], row[4], row[5])
+        session = Session(session_id=session_id,
+                          created_at=row[0],
+                          context=row[1],
+                          tool_context=row[2],
+                          terminated=row[3],
+                          user_id=row[4],
+                          name=row[5],
+                          messages=[])
         messages = await self.message_dao.get_messages(session_id)
         for message in messages:
             session.add_message(message)

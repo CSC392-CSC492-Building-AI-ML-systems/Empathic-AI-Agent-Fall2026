@@ -37,5 +37,8 @@ class MessageDao:
         for row in rows:
             if row[0] is None:
                 continue
-            messages.append(Message(row[0], row[1], row[2], row[3]))
+            messages.append(Message(message_id=row[0],
+                                    role=row[1],
+                                    content=row[2],
+                                    created_at=row[3]))
         return messages
