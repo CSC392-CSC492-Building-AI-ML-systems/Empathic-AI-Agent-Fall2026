@@ -3,12 +3,12 @@ import { ChatThread } from '../chat/ChatThread';
 import { Input } from '../buttons/Input';
 import { YesOrNoButton } from '../buttons/YesOrNoButton';
 
-
-export function LoginView({onBackToChat, onLoginSuccess}) {
+// add in onBackToChat when implement guest state
+export function LoginView({ onLoginSuccess}) {
 
     // initial message from agent
     const [messages, setMessages] = useState(() => [
-        { id: Date.now(), sender: 'sam', text: "Hi! I'm Sam :) Would you like to login or signup?", timestamp: new Date().toISOString() }
+        { id: crypto.randomUUID(), sender: 'sam', text: "Hi! I'm Sam :) Would you like to login or signup?", timestamp: new Date().toISOString() }
     ]);
     
     const [inputVal, setInputVal] = useState('');
@@ -57,7 +57,7 @@ export function LoginView({onBackToChat, onLoginSuccess}) {
                 // immediately ask user for their email
                 
                 const userMsg = { 
-                    id: Date.now(), 
+                    id: crypto.randomUUID(), 
                     sender: 'user', 
                     text: trimmedInput, 
                     timestamp: new Date().toISOString()
@@ -65,7 +65,7 @@ export function LoginView({onBackToChat, onLoginSuccess}) {
 
 
                 const confirmLoginMsg = {
-                    id: Date.now() + 1,
+                    id: crypto.randomUUID(),
                     sender: 'sam',
                     text: `Ok, I will help you login now! Please give me your email`,
                     timestamp: new Date().toISOString()
@@ -90,7 +90,7 @@ export function LoginView({onBackToChat, onLoginSuccess}) {
                 // ask user for their name first
 
                 const userMsg = { 
-                    id: Date.now(), 
+                    id: crypto.randomUUID(), 
                     sender: 'user', 
                     text: trimmedInput, 
                     timestamp: new Date().toISOString()
@@ -98,14 +98,14 @@ export function LoginView({onBackToChat, onLoginSuccess}) {
 
 
                 const confirmSignupMsg = {
-                    id: Date.now() + 1,
+                    id: crypto.randomUUID(),
                     sender: 'sam',
                     text: `Ok, I will help you signup now!`,
                     timestamp: new Date().toISOString()
                 };
 
                 const askForNameMsg = {
-                    id: Date.now() + 2,
+                    id: crypto.randomUUID(),
                     sender: 'sam',
                     text: `To start off, what's your name?`,
                     timestamp: new Date().toISOString()
@@ -143,14 +143,14 @@ export function LoginView({onBackToChat, onLoginSuccess}) {
             setPendingName(trimmedInput);
 
             const userMsg = { 
-                id: Date.now(), 
+                id: crypto.randomUUID(), 
                 sender: 'user', 
                 text: trimmedInput, 
                 timestamp: new Date().toISOString()
             };
 
             const confirmNameMsg = {
-                id: Date.now() + 1,
+                id: crypto.randomUUID(),
                 sender: 'sam',
                 text: `I will call you ${trimmedInput} from now on, is that alright with you?`,
                 timestamp: new Date().toISOString()
@@ -178,14 +178,14 @@ export function LoginView({onBackToChat, onLoginSuccess}) {
             setPendingEmail(trimmedInput);
 
             const userMsg = { 
-                id: Date.now(), 
+                id: crypto.randomUUID(), 
                 sender: 'user', 
                 text: trimmedInput, 
                 timestamp: new Date().toISOString()
             };
 
             const confirmEmailMsg = {
-                id: Date.now() + 1,
+                id: crypto.randomUUID(),
                 sender: 'sam',
                 text: `Is ${trimmedInput} your email?`,
                 timestamp: new Date().toISOString()
@@ -209,7 +209,7 @@ export function LoginView({onBackToChat, onLoginSuccess}) {
                 await waitOneSecond();
                 setIsTyping(false);
                 setMessages((prev) => [...prev, {
-                    id: Date.now(),
+                    id: crypto.randomUUID(),
                     sender: 'sam',
                     text,
                     timestamp: new Date().toISOString()
@@ -241,6 +241,7 @@ export function LoginView({onBackToChat, onLoginSuccess}) {
 
                 setUserId(newUserId);
                 onLoginSuccess(newUserId);
+                setPassword(trimmedInput);
                 await agentMsg(`Ok :D I have all the info I need now. It was a pleasure to meet you ${username}!`);
                 console.log("-----------------completed signup---------------------");
                 printAllFields();
@@ -280,6 +281,7 @@ export function LoginView({onBackToChat, onLoginSuccess}) {
 
                 setUserId(newUserId);
                 onLoginSuccess(newUserId);
+                setPassword(trimmedInput);
                 await agentMsg("Ok :D I have all the info I need now. You are all logged in now!");
                 console.log("-----------------completed login---------------------");
                 printAllFields();
@@ -296,7 +298,7 @@ export function LoginView({onBackToChat, onLoginSuccess}) {
 		if (isTyping) return;
 
         const userMsg = { 
-            id: Date.now(), 
+            id: crypto.randomUUID(), 
             sender: 'user', 
             text: 'Yes', 
             timestamp: new Date().toISOString() 
@@ -305,7 +307,7 @@ export function LoginView({onBackToChat, onLoginSuccess}) {
         if (status === 'confirmName') {
 
             const emailMsg = { 
-                id: Date.now() + 1, 
+                id: crypto.randomUUID(), 
                 sender: 'sam', 
                 text: `Nice to meet you ${pendingName}. What's your email?`, 
                 timestamp: new Date().toISOString() 
@@ -330,12 +332,14 @@ export function LoginView({onBackToChat, onLoginSuccess}) {
                 tempText = "Okay :) Please enter in your password so I can help you login";
             }
 
+            // user is signing up -> let user choose a password
             if (loginOrSignup === 'signup') {
                 tempText = "Got it! Now please choose a password that is at least 8 characters";
             }
 
             console.log(tempText);
-            const passwordMsg = { id: Date.now() + 1, 
+            const passwordMsg = { 
+                id: crypto.randomUUID(), 
                 sender: 'sam', 
                 text: tempText, 
                 timestamp: new Date().toISOString() 
@@ -360,7 +364,7 @@ export function LoginView({onBackToChat, onLoginSuccess}) {
 		if (isTyping) return;
 
         const userMsg = { 
-            id: Date.now(), 
+            id: crypto.randomUUID(), 
             sender: 'user', 
             text: 'No', 
             timestamp: new Date().toISOString() 
@@ -369,7 +373,7 @@ export function LoginView({onBackToChat, onLoginSuccess}) {
         if (status === 'confirmName') {
             
             const retryMsg = { 
-                id: Date.now() + 1, 
+                id: crypto.randomUUID(), 
                 sender: 'sam', 
                 text: "ok, maybe I read wrong, what is your name again?", 
                 timestamp: new Date().toISOString() 
@@ -386,7 +390,7 @@ export function LoginView({onBackToChat, onLoginSuccess}) {
         } 
         else if (status === 'confirmEmail') {
             const retryMsg = { 
-                id: Date.now() + 1, 
+                id: crypto.randomUUID(), 
                 sender: 'sam', 
                 text: "No worries, what is your email again?", 
                 timestamp: new Date().toISOString() 

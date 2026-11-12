@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
+// import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import { Sidebar } from './components/sidebar/Sidebar';
 import { Input } from './components/buttons/Input';
 import { InitialMood } from './components/chat/InitialMood';
@@ -6,7 +7,6 @@ import { ChatThread } from './components/chat/ChatThread';
 import { PastChatsView } from './components/views/PastChatsView';
 import { LoginView } from './components/views/LoginView';
 import { SettingsView } from './components/views/SettingsView';
-import { AgentThinking } from './components/chat/AgentThinking';
 import './App.css';
 
 function App() {
@@ -15,7 +15,8 @@ function App() {
 	const [messages, setMessages] = useState([]);
 	const [inputVal, setInputVal] = useState('');
 	const [sessionId, setSessionId] = useState(null);
-	const sessionFetched = useRef(false);
+	// IF IMPLEMENT GUEST STATE
+	// const sessionFetched = useRef(false);
 
 	// to simulate thinking -> more empathetic (?)
 	const waitOneSecond = () => new Promise((resolve) => setTimeout(resolve, 1000));
@@ -144,7 +145,7 @@ function App() {
 	};
 
 	// new chat resetting everything
-	// also creates a new session id
+	// brings back to og state
 	const handleNewChat = () => {
     	setActiveTab('chat');
     	setMessages([]);
