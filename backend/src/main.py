@@ -1,17 +1,17 @@
 from contextlib import asynccontextmanager
 from functools import lru_cache
 from typing import Annotated
+from uuid import uuid4
 
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from .api.config import Settings
-from .api.routers import health, session
+from .api.routers import health, session, login
 from .database.connection import create_pool
 from .database.dao.message_dao import MessageDao
 from .database.dao.session_dao import SessionDao
 from .database.dao.user_dao import UserDao
-
 
 @lru_cache
 def get_settings() -> Settings:
@@ -27,6 +27,7 @@ async def lifespan(app: FastAPI):
         app.state.user_dao = UserDao(pool)
         app.state.message_dao = MessageDao(pool)
         app.state.session_dao = SessionDao(pool, app.state.message_dao)
+        app.state.session_hash = {}
         yield
     finally:
         await pool.close()
@@ -44,8 +45,14 @@ app.add_middleware(
 
 app.include_router(health.router)
 app.include_router(session.router)
+app.include_router(login.router)
 
 
 @app.get("/")
-async def root(settings: Annotated[Settings, Depends(get_settings)]):
-    return {"name": settings.app_name}
+async def root(
+    settings: Annotated[Settings, Depends(get_settings)],
+    response: Response
+    ):
+    uuid = uuid4()
+    response.set_cookie(key="SESSCOOKIE", value=uuid)
+    return {"cookie": uuid}
