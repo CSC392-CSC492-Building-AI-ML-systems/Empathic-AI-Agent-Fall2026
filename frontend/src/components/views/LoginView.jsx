@@ -204,108 +204,68 @@ export function LoginView({onBackToChat, onLoginSuccess}) {
             setStatus('confirmEmail')
         }
 
-        // check for password
         else if (status === 'password') {
-            // email verification here
-            const userExists = await verifyEmail(email);
+            const agentMsg = async (text) => {
+                setInputVal('');
+                setIsTyping(true);
+                await waitOneSecond();
+                setIsTyping(false);
+                setMessages((prev) => [...prev, {
+                    id: Date.now(),
+                    sender: 'sam',
+                    text,
+                    timestamp: new Date().toISOString()
+                }]);
+            };
 
-            // only perform checks for correct password strength when the user is signing up 
+            // ---------- SIGNUP ----------
             if (loginOrSignup === 'signup') {
-                // check for length first
-                if (trimmedInput.length < 8){
-                    setError('Hey, your password will be more secure if you have more than 8 characters!');
+                if (trimmedInput.length < 8) {
+                    setError('Your password needs at least 8 characters!');
                     return;
                 }
-                
                 const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z0-9]).+$/;
                 if (!passwordRegex.test(trimmedInput)) {
-                    setError('Hey, your password is not the most secure right now... Try to use at least one uppercase, one lowercase, one number, and one special character!');
+                    setError('Try to use at least one uppercase, one lowercase, one number, and one special character!');
                     return;
                 }
 
                 setError('');
                 setShowPassword(false);
-                setPassword(trimmedInput);
-                // when everything is good -> create account
-                setUserId( await createAccount(username, email, password) );
-                // notify main
-                if (userId) {
-                    onLoginSuccess(userId);
+
+                
+                const newUserId = await createAccount(username, email, trimmedInput);
+
+                if (!newUserId) {
+                    await agentMsg("Hmm, something went wrong creating your account. Please try a different password or try again later.");
+                    return;
                 }
 
-                const doneMsg = {
-                    id: Date.now() + 1,
-                    sender: 'sam',
-                    text: `Ok :D I have all the info I need now. It was a pleasure to meet you ${username}!`,
-                    timestamp: new Date().toISOString()
-                };
-                
-                setIsTyping(true);
-                setInputVal('');
-                await waitOneSecond();
-                setIsTyping(false);
-
-                setMessages((prev) => [...prev, doneMsg]);
-                // for debugging rn
-                // WILL SEND TO BACKEND
-                console.log(`your userid is: ${userId}`);
-                console.log(password);
-                setStatus('done')
+                setUserId(newUserId);
+                onLoginSuccess(newUserId);
+                await agentMsg(`Ok :D I have all the info I need now. It was a pleasure to meet you ${username}!`);
+                setStatus('done');
                 return;
             }
 
-            // what to do when logging in
-            if (loginOrSignup === 'login' && userExists === 'true') {
-                // try to login to account and get the user id
-                setUserId( await loginToAccount(trimmedInput) );
-                // notify main
-                if (userId) {
-                    onLoginSuccess(userId);
+            // ---------- LOGIN ----------
+            if (loginOrSignup === 'login') {
+                const userExists = await verifyEmail(email);
+                let newUserId = null;
+                if (userExists === 'True') {
+                    newUserId = await loginToAccount(trimmedInput);
                 }
 
-                console.log("the below is userID");
-                console.log(userId);
-                if (userId != null) {
-                    console.log("yay we are logged in");
-                    const text = "Ok :D we are all logged in now";
+                if (!newUserId) {
                     setShowPassword(false);
-                    setPassword(trimmedInput);
-
-                    const doneMsg = {
-                        id: Date.now() + 1,
-                        sender: 'sam',
-                        text: `Ok :D I have all the info I need now. You are all logged in now!`,
-                        timestamp: new Date().toISOString()
-                    };
-                    
-                    setIsTyping(true);
-                    setInputVal('');
-                    await waitOneSecond();
-                    setIsTyping(false);
-
-                    setMessages((prev) => [...prev, doneMsg]);
-                    setStatus('done')
+                    await agentMsg("Hey, I think you entered the wrong password, or your account doesn't exist. Please try again!");
                     return;
-
                 }
-            }
-            // something wrong with password verification
-            else {
-                console.log("password verification gone wrong -> wrong password match with email");
-                console.log("or account doesnt exist with this email")
-                const wrongPasswordMsg = {
-                    id: Date.now() + 1,
-                    sender: 'sam',
-                    text: `Hey, I think you entered in the wrong password, or your account doesn't exist, please try again!`,
-                    timestamp: new Date().toISOString()
-                };
-                setShowPassword(false);
-                setInputVal('');
-                setIsTyping(true);
-                await waitOneSecond();
-                setIsTyping(false);
 
-                setMessages((prev) => [...prev, wrongPasswordMsg]);
+                setUserId(newUserId);
+                onLoginSuccess(newUserId);
+                await agentMsg("Ok :D I have all the info I need now. You are all logged in now!");
+                setStatus('done');
                 return;
             }
         }
@@ -451,13 +411,23 @@ export function LoginView({onBackToChat, onLoginSuccess}) {
         // on success -> receive uuid from backend
         // on fail -> uuid = None
         try {
-            const loginResponse = await fetch(`${BASE}/`, {
+            const loginResponse = await fetch(`${BASE}/login/`, {
                 method: 'POST',
                 credentials: 'include',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify( {"password": password, "email": email} ),
+                body: JSON.stringify( {email, password, cookie: ''} ),
             });
+
+            if (!loginResponse.ok) {
+                return null;
+            } 
+            
             const isLoggedIn = await loginResponse.json();
+
+            if (!isLoggedIn.user_id || isLoggedIn.user_id === 'None') {
+                return null;
+            }
+            
             return isLoggedIn.user_id;
         }
         
@@ -470,11 +440,11 @@ export function LoginView({onBackToChat, onLoginSuccess}) {
 
     const createAccount = async(name, email, password) => {
         try {
-            const createAccountResponse = await fetch(`${BASE}/create_account/`, {
+            const createAccountResponse = await fetch(`${BASE}/login/create_account`, {
                 method: 'POST',
                 credentials: 'include',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify( {"name": name, "email": email, "password": password}),
+                body: JSON.stringify({ first_name: name, last_name: '', nickname: name, profile: '', email, password }),
             });
             const createdAccount =  await createAccountResponse.json();
             return createdAccount.user_id;

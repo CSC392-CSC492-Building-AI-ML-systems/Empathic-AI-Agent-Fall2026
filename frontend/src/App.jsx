@@ -10,7 +10,7 @@ import { AgentThinking } from './components/chat/AgentThinking';
 import './App.css';
 
 function App() {
-	const [activeTab, setActiveTab] = useState('chat' | 'past_chats' | 'login' | 'settings' | 'signup' ); 
+	const [activeTab, setActiveTab] = useState('chat'); 
 	const [messages, setMessages] = useState([]);
 	const [inputVal, setInputVal] = useState('');
 	const [sessionId, setSessionId] = useState(null);
@@ -32,6 +32,12 @@ function App() {
 			const response = await fetch(`${BASE}/session/`, {
 				method: 'GET', 
 			});
+
+			// checking for 4xx/5xx status 
+			if (!response.ok) {
+				console.log("Failed to create session, status:", response.status);
+				return;
+			}
 			const session = await response.json();
 			setSessionId(session.session_id);
 			console.log("Current session id: ", session.session_id);
@@ -53,6 +59,11 @@ function App() {
 
 	// backend integration
 	const sendToBackend = async (payload) => {
+		// no session yet -> don't send to /session/null/message
+		if (!sessionId) {
+			console.log("No session id yet, can't send message");
+			return null;
+		}
 		console.log("Sending payload to backend:", payload);
     
 		// backend API call
@@ -64,13 +75,21 @@ function App() {
 				},
 				body: JSON.stringify({ message: payload.text }),
 			});
+
+			// checking for 4xx/5xx responses
+			if (!response.ok) {
+				console.log("Backend error, status:", response.status);
+				return null;
+			}
+
 			const backendResponse = await response.json();
 			console.log("Received from backend: ", backendResponse);
-			return backendResponse.response
+			return backendResponse.response;
 
 		}
 		catch (error) {
-			console.log("Error in sending msg to backend", error)
+			console.log("Error in sending msg to backend", error);
+			return null;
 		}
 	};
 
@@ -145,7 +164,8 @@ function App() {
 		const agentMsg = { 
 			id: Date.now() + 1,
 			sender: 'sam', 
-			text: agentResponse,
+			// ?? falls back on null so if agentResponse = null -> we ask user for input again
+			text: agentResponse ?? "Sorry, can you repeat what you said one more time?",
 			timestamp: new Date().toISOString()
 		};
 
@@ -174,7 +194,7 @@ function App() {
 
 	const handleLogout = async () => {
         try {
-			const logoutResponse = await fetch(`$BASE/logout?cache=${userId}`, {
+			const logoutResponse = await fetch(`${BASE}/login/logout?cache=${userId}`, {
 				method: 'GET',
 				credentials: 'include',
 			});
@@ -200,6 +220,7 @@ function App() {
 			{activeTab === 'login' ? (
 				<LoginView
 					onBackToChat={() => setActiveTab('chat')}
+					onLoginSuccess={(id) => setUserId(id)}
 				/>
 			) : (
 				<>
