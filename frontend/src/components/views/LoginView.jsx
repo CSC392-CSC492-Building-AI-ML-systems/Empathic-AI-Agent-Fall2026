@@ -36,6 +36,8 @@ export function LoginView({onBackToChat}) {
 	const waitOneSecond = () => new Promise((resolve) => setTimeout(resolve, 1000));
 	const [isTyping, setIsTyping] = useState(false);
 
+    const [userId, setUserId] = useState('')
+
     const BASE = "http://localhost:8000";
     
     // TODO !!
@@ -204,6 +206,9 @@ export function LoginView({onBackToChat}) {
 
         // check for password
         else if (status === 'password') {
+            // email verification here
+            const userExists = await verifyEmail(email);
+
             // only perform checks for correct password strength when the user is signing up 
             if (loginOrSignup === 'signup') {
                 // check for length first
@@ -217,12 +222,38 @@ export function LoginView({onBackToChat}) {
                     setError('Hey, your password is not the most secure right now... Try to use at least one uppercase, one lowercase, one number, and one special character!');
                     return;
                 }
+
+                setError('');
+                setShowPassword(false);
+                setPassword(trimmedInput);
+                // when everything is good -> create account
+                setUserId( await createAccount(username, email, password) );
+
+                const doneMsg = {
+                    id: Date.now() + 1,
+                    sender: 'sam',
+                    text: `Ok :D I have all the info I need now. It was a pleasure to meet you ${username}!`,
+                    timestamp: new Date().toISOString()
+                };
+                
+                setIsTyping(true);
+                setInputVal('');
+                await waitOneSecond();
+                setIsTyping(false);
+
+                setMessages((prev) => [...prev, doneMsg]);
+                // for debugging rn
+                // WILL SEND TO BACKEND
+                console.log(`your userid is: ${userId}`);
+                console.log(password);
+                setStatus('done')
+                return;
             }
 
             // what to do when logging in
-            if (loginOrSignup === 'login') {
+            if (loginOrSignup === 'login' && userExists === 'true') {
                 // try to login to account and get the user id
-                const userId = await loginToAccount(trimmedInput);
+                setUserId( await loginToAccount(trimmedInput) );
                 console.log("the below is userID");
                 console.log(userId);
                 if (userId != null) {
@@ -244,52 +275,30 @@ export function LoginView({onBackToChat}) {
                     setIsTyping(false);
 
                     setMessages((prev) => [...prev, doneMsg]);
-                    
+                    setStatus('done')
                     return;
 
-                }
-                // something wrong with password verification
-                else {
-                    console.log("password verification gone wrong -> wrong password match with email");
-                    const wrongPasswordMsg = {
-                        id: Date.now() + 1,
-                        sender: 'sam',
-                        text: `Hey, I think you entered in the wrong password, please try again!`,
-                        timestamp: new Date().toISOString()
-                    };
-                    setShowPassword(false);
-                    setInputVal('');
-                    setIsTyping(true);
-                    await waitOneSecond();
-                    setIsTyping(false);
-
-                    setMessages((prev) => [...prev, wrongPasswordMsg]);
-                    return;
                 }
             }
-            
-            setError('');
-            setShowPassword(false);
-            setPassword(trimmedInput);
+            // something wrong with password verification
+            else {
+                console.log("password verification gone wrong -> wrong password match with email");
+                console.log("or account doesnt exist with this email")
+                const wrongPasswordMsg = {
+                    id: Date.now() + 1,
+                    sender: 'sam',
+                    text: `Hey, I think you entered in the wrong password, or your account doesn't exist, please try again!`,
+                    timestamp: new Date().toISOString()
+                };
+                setShowPassword(false);
+                setInputVal('');
+                setIsTyping(true);
+                await waitOneSecond();
+                setIsTyping(false);
 
-            const doneMsg = {
-                id: Date.now() + 1,
-                sender: 'sam',
-                text: `Ok :D I have all the info I need now. It was a pleasure to meet you ${username}!`,
-                timestamp: new Date().toISOString()
-            };
-            
-            setIsTyping(true);
-            setInputVal('');
-            await waitOneSecond();
-            setIsTyping(false);
-
-            setMessages((prev) => [...prev, doneMsg]);
-            // for debugging rn
-            // WILL SEND TO BACKEND
-            console.log(password);
-            
-            setStatus('done')
+                setMessages((prev) => [...prev, wrongPasswordMsg]);
+                return;
+            }
         }
         
     };
@@ -326,35 +335,15 @@ export function LoginView({onBackToChat}) {
         } 
 
         else if (status === 'confirmEmail') {
-            // after user says yes this is my email
-            // now we must verify with database
-            const emailExists = await verifyEmail(pendingEmail);
-            if (emailExists === null) {
-                console.log("issue with verifying email");
-            }
-
             let tempText = '';
             console.log(loginOrSignup);
             // user is logging in -> ask for their password
             if (loginOrSignup === 'login') {
-                if (emailExists === "true") {
-                    tempText = "Okay :) Please enter in your password so I can help you login";
-                }
-                else {
-                    console.log("trying to login but no account exists");
-                    return;
-                }
-                
+                tempText = "Okay :) Please enter in your password so I can help you login";
             }
 
             if (loginOrSignup === 'signup') {
-                if (emailExists === 'false') {
-                    tempText = "Got it! Now please choose a password that is at least 8 characters";
-                }
-                else {
-                    console.log("trying to signup but account already exists");
-                    return;
-                }
+                tempText = "Got it! Now please choose a password that is at least 8 characters";
             }
 
             console.log(tempText);
@@ -460,12 +449,30 @@ export function LoginView({onBackToChat}) {
                 body: JSON.stringify( {"password": password, "email": email} ),
             });
             const isLoggedIn = await loginResponse.json();
-            return isLogggedIn.user_id;
+            return isLoggedIn.user_id;
         }
         
         catch (error) {
             console.log(error);
             console.log("error in logging in - email and password dont match");
+            return null;
+        }
+    };
+
+    const createAccount = async(name, email, password) => {
+        try {
+            const createAccountResponse = await fetch(`${BASE}/create_account/`, {
+                method: 'POST',
+                credentials: 'include',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify( {"name": name, "email": email, "password": password}),
+            });
+            const createdAccount =  await createAccountResponse.json();
+            return createdAccount.user_id;
+        }
+        catch (error) {
+            console.log(error);
+            console.log("error in creating an account:(((((");
             return null;
         }
     };
