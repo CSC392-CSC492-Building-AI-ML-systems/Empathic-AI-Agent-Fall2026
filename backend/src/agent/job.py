@@ -1,12 +1,14 @@
+import json
+
 from dataclasses import dataclass
 from typing import Callable
 from uuid import UUID
 
-from backend.src.agent.evaluate_answer import model_decide, model_respond
-from backend.src.agent.fine_tune import send_model
-from backend.src.database.dao.message_dao import MessageDao
-from backend.src.database.dao.session_dao import SessionDao
-from backend.src.database.dao.user_dao import UserDao
+from ..database.dao.message_dao import MessageDao
+from ..database.dao.session_dao import SessionDao
+from ..database.dao.user_dao import UserDao
+from .evaluate_answer import model_decide
+from .fine_tune import send_model
 
 
 @dataclass
@@ -16,9 +18,39 @@ class Decision:
     is_tool_call: bool
     call: str
     content: str
+    memory_key: str | None = None
 
 def parse(raw: str) -> Decision:
-    return Decision(raw=raw, is_tool_call=False, call="Y", content="X")
+    """Parse the model's JSON response"""
+
+    if not raw:
+        raw = ""
+
+    data = json.loads(raw)
+    if not isinstance(data, dict):
+        raise TypeError("Decision must be a JSON object")
+
+    call = data.get("call")
+    if call not in ("RESPOND", "SAVE-TO-MEMORY", "TERMINATE-SESSION"):
+        raise ValueError("Unknown decision call")
+
+    content = data.get("content", "")
+    if not isinstance(content, str):
+        raise TypeError("Decision content must be a string")
+
+    memory_key = data.get("memory_key")
+    if call == "SAVE-TO-MEMORY":
+        if not isinstance(memory_key, str) or not memory_key.strip():
+            raise ValueError("SAVE-TO-MEMORY requires a memory_key")
+        if not content.strip():
+            raise ValueError("SAVE-TO-MEMORY requires content")
+        memory_key = memory_key.strip()
+    else:
+        memory_key = None
+
+    if call != "RESPOND":
+        return Decision(raw, True, call, content, memory_key)
+    return Decision(raw, False, call, content, memory_key)
 
 
 class Job:
@@ -46,11 +78,12 @@ class Job:
 
         for i in range(self.turn_limit):
             session = await self.session_dao.get_session(self.session_id)
-            memory = self.user_dao.get_memory(session.user_id)
+            memories = await self.user_dao.get_memories(session.user_id)
 
             # choose what to do
-            raw = await model_decide(session, memory)
+            raw = await model_decide(session, memories)
             decision = parse(raw)
+
             if not decision or not decision.is_tool_call:
                 break # should do something else later
 
@@ -67,18 +100,17 @@ class Job:
                 pass
 
             elif decision.call == "SAVE-TO-MEMORY":
-                current_memory = await self.user_dao.get_memory(session.user_id)
-                if current_memory:
-                    await self.user_dao.update_memory(session.user_id, current_memory + " | " + decision.content) # change memory store format later
-                    continue
-                await self.user_dao.update_memory(session.user_id, decision.content)  # change memory store format later
+                if decision.memory_key is None:
+                    raise ValueError("SAVE-TO-MEMORY requires a memory_key")
+                await self.user_dao.upsert_memory(session.user_id, decision.memory_key, decision.content)
 
 
         if not session:
             session = await self.session_dao.get_session(self.session_id)
 
-        memory = self.user_dao.get_memory(session.user_id)
-        response = send_model(session, memory)
+        memories = await self.user_dao.get_memories(session.user_id)
+        response = await send_model(session, memories) # fine tuned model
+        await self.message_dao.add_message("assistant", response, session.session_id)
         return response
 
 
