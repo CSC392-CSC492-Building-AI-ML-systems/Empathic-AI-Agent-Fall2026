@@ -1,9 +1,13 @@
 import asyncio
+from datetime import UTC, datetime
+from uuid import uuid4
 
 import pytest
 from pydantic import ValidationError
 
 from backend.src.clarification import Agent, AgentReply, Turn
+from backend.src.database.model.message import Message
+from backend.src.database.model.session import Session
 
 
 class EchoAgent:
@@ -39,18 +43,25 @@ def test_reply_rejects_blank_content(content: str) -> None:
         AgentReply(kind="answer", content=content)
 
 
-def test_assistant_turn_requires_kind() -> None:
-    """Every assistant message has to say whether it was a question or an answer"""
+def test_turn_rejects_unknown_role() -> None:
+    """Only user and assistant messages belong in the history"""
 
     with pytest.raises(ValidationError):
-        Turn(role="assistant", content="hi")
+        Turn.model_validate({"role": "robot", "content": "hi"})
 
 
-def test_user_turn_rejects_kind() -> None:
-    """User messages shouldn't have a kind, only the assistant's do"""
+def test_history_from_database_fits_turn() -> None:
+    """A conversation the way the app loads it should convert to turns without errors"""
 
-    with pytest.raises(ValidationError):
-        Turn(role="user", kind="answer", content="hi")
+    now = datetime.now(UTC)
+    session = Session(uuid4(), now)
+    session.add_message(Message(1, "user", "I want to get better at running.", now))
+    session.add_message(Message(2, "assistant", "Farther or faster?", now))
+
+    history = [Turn.model_validate(m) for m in session.get_conversation_for_model()]
+
+    assert [turn.role for turn in history] == ["user", "assistant"]
+    assert history[1].content == "Farther or faster?"
 
 
 def test_agent_protocol_round_trip() -> None:
@@ -63,7 +74,7 @@ def test_agent_protocol_round_trip() -> None:
     assert first.kind == "clarify"
 
     history += [
-        Turn(role="assistant", kind=first.kind, content=first.content),
+        Turn(role="assistant", content=first.content),
         Turn(role="user", content="Training for a 10K."),
     ]
     second = asyncio.run(agent.respond(history))

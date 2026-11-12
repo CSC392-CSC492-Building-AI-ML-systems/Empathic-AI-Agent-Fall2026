@@ -24,6 +24,8 @@ Clarification Service can use it too.
 - `llm.py`: LLM access. Which model and provider get called is set in `.env`
   (see `.env.example`), so switching models never needs a code change
 - `mock.py`: fake LLM client for tests, so nothing hits the network
+- `dataset.py`: test case format, and a checker for dataset files. The format
+  and labelling guide are in [`dataset/README.md`](../../../dataset/README.md)
 
 Still to come as the eval issues land:
 

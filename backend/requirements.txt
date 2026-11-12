@@ -7,3 +7,4 @@ psycopg_pool>=3.3.3
 uvicorn>=0.53
 bcrypt>=5.0.0
 huggingface-hub
+bcrypt
