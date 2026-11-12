@@ -3,7 +3,11 @@ ALTER TABLE sessions
     ADD tool_context TEXT,
     ADD terminated BOOLEAN DEFAULT false;
 
-ALTER TABLE users DROP COLUMN profile;
+ALTER TABLE users
+    DROP COLUMN profile,
+    DROP COLUMN first_name,
+    DROP COLUMN last_name,
+    RENAME COLUMN nickname TO name;
 
 CREATE TABLE user_memories (
     user_id UUID NOT NULL,
