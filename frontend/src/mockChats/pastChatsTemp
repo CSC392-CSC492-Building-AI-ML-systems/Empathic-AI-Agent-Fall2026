@@ -1,0 +1,55 @@
+export const PAST_CHATS_MOCK = [
+	{ 
+		id: 1, 
+		sessionId: 'f2793cf5-1439-42d3-8384-f6bca040296c',
+		date: 'Jan 1, 2026', 
+		title: 'laptop', 
+		desc: 'you wanted to buy a laptop and I suggested blah blah blah',
+		messages: [
+			{ id: 101, sender: 'user', text: 'I want a laptop.' },
+			{ id: 102, sender: 'sam', text: 'Ok! Is there a specific brand you are looking for? Will u be using it more for work related tasks or streaming/gaming? Do u hv a preference for the screen size or any specs? If you arent sure feel free to ask me more questions to help you understand better' },
+			{ id: 103, sender: 'user', text: 'I want an asus laptop and I will mainly be using it for gaming.' },
+			{ id: 104, sender: 'sam', text: 'Got it. My suggestion for u is this...' }
+		]
+	},
+	{ 
+		id: 2, 
+		sessionId: 'fcb433b8-e138-4509-bc08-75bcbf53d22e',
+		date: 'Jan 10, 2026', 
+		title: 'climbing questions', 
+		desc: 'helped you with climbing',
+		messages: [
+			{ id: 201, sender: 'user', text: 'How do I improve my crimp grip strength without getting injured?' },
+			{ id: 202, sender: 'sam', text: 'Hangboard training with progressive overload is great for that, keeping your shoulders active.' },
+			{ id: 203, sender: 'user', text: 'How many times a week should I hangboard?' },
+			{ id: 204, sender: 'sam', text: 'Start with just 1 to 2 times a week at the end of a fresh session, ensuring plenty of rest.' }
+		]
+	},
+	{ 
+		id: 3, 
+		sessionId: '06507876-c8d2-4a36-97f0-d17f47188031',
+		date: 'Jan 19, 2026', 
+		title: 'tft comp recs', 
+		desc: 'helped you learn comps to reach masters',
+		messages: [
+			{ id: 301, sender: 'user', text: 'plz help me reach diamond in tft i hv been trying for so long. give me best comps plz' },
+			{ id: 302, sender: 'sam', text: 'can u tell me what your rank is right now? are u playing solo or double up? what are some things you have been struggling with? u got this i believe you can make diamond :)' },
+			{ id: 303, sender: 'user', text: 'i peaked silver :( what items should I prioritize on the carousel?' },
+			{ id: 304, sender: 'sam', text: 'it depends on your comp! currently some popular comps rn are 3 cost reroll comps. should be easier than fast 9 comps as long as u hit all your units :D' },
+            { id: 3035, sender: 'user', text: 'my luck has been terrible tho :(((' }
+        ]
+	},
+	{ 
+		id: 4, 
+		sessionId: '80fccfb8-7130-4c20-8093-479389309c25',
+		date: 'Jan 29, 2026', 
+		title: 'life chat', 
+		desc: 'talked about life',
+		messages: [
+			{ id: 401, sender: 'user', text: 'Just feeling a bit overwhelmed with everything on my plate.' },
+			{ id: 402, sender: 'sam', text: 'Take a deep breath. Let’s break down what is actually urgent versus what can wait.' },
+			{ id: 403, sender: 'user', text: 'I have coding assignments and project deadlines all piling up.' },
+			{ id: 404, sender: 'sam', text: 'That is completely fair. Let us tackle them one small chunk at a time so it feels manageable.' }
+		]
+	},
+];

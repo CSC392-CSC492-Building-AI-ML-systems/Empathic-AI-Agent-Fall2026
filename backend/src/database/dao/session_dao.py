@@ -1,4 +1,5 @@
 from uuid import UUID, uuid4
+
 from psycopg_pool import AsyncConnectionPool
 
 from ..model.session import Session
@@ -15,12 +16,11 @@ class SessionDao:
     async def create_session(self, user_id: UUID, name: str | None = None) -> UUID:
         """Create a session and return its ID"""
         session_id = uuid4()
-        async with self.pool.connection() as connection:
-            async with connection.cursor() as cursor:
-                await cursor.execute(
-                    "INSERT INTO sessions (id, user_id, name) VALUES (%s, %s, %s)",
-                    (session_id, user_id, name),
-                )
+        async with self.pool.connection() as connection, connection.cursor() as cursor:
+            await cursor.execute(
+                "INSERT INTO sessions (id, user_id, name) VALUES (%s, %s, %s)",
+                (session_id, user_id, name),
+            )
         return session_id
 
     async def get_session(self, session_id: UUID) -> Session:
@@ -30,10 +30,9 @@ class SessionDao:
             SELECT name, created_at FROM sessions
             WHERE id = %s
         """
-        async with self.pool.connection() as connection:
-            async with connection.cursor() as cursor:
-                await cursor.execute(sql, (session_id,))
-                row = await cursor.fetchone()
+        async with self.pool.connection() as connection, connection.cursor() as cursor:
+            await cursor.execute(sql, (session_id,))
+            row = await cursor.fetchone()
         if row is None:
             raise KeyError(f"Session {session_id} does not exist")
 
@@ -50,10 +49,9 @@ class SessionDao:
             WHERE user_id = %s
             ORDER BY created_at ASC, id ASC
         """
-        async with self.pool.connection() as connection:
-            async with connection.cursor() as cursor:
-                await cursor.execute(sql, (user_id,))
-                rows = await cursor.fetchall()
+        async with self.pool.connection() as connection, connection.cursor() as cursor:
+            await cursor.execute(sql, (user_id,))
+            rows = await cursor.fetchall()
 
         sessions = []
         for row in rows:
@@ -66,6 +64,5 @@ class SessionDao:
             DELETE FROM sessions
             WHERE id = %s
         """
-        async with self.pool.connection() as connection:
-            async with connection.cursor() as cursor:
-                await cursor.execute(sql, (session_id,))
+        async with self.pool.connection() as connection, connection.cursor() as cursor:
+            await cursor.execute(sql, (session_id,))

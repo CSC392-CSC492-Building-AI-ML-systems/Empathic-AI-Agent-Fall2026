@@ -10,9 +10,6 @@ from ...agent import fine_tune as model
 class Message(BaseModel): 
     message: str 
 
-class Session_Id(BaseModel):
-    id: str
-
 
 router = APIRouter(
     prefix="/session",
@@ -25,24 +22,28 @@ async def start_conversation_state(
     request : Request,
     message : Message
 ):
+    """starts a conversation with a message. Returns the agent's response and session id."""
     session_dao = request.app.state.session_dao
     message_dao = request.app.state.message_dao
     hash = request.app.state.session_hash
 
+    # ensures valid user login before usage
     cookie = request.cookies.get("Cookie")
-    if (cookie):
+    if cookie in hash:
         user_id = hash[cookie]
     else:
-        return {"session_id": "unverified cookie"}
+        return {"session_id": "ERROR: unverified cookie", "response": None}
 
     # make session name
-    session_name = get_session_name()
+    session_name = await get_session_name()
 
-    # TEST_USER_ID = uuid.UUID("00000000-0000-0000-0000-000000000001")
+    # create new session for user with generated name
     session_id = await session_dao.create_session(user_id, session_name)
 
+    # add message to session
     await message_dao.add_message("user", message.message, session_id)
 
+    # get response from agent and add message to session
     response = await model.send_model([{"role": "user", "content": message.message}])
     await message_dao.add_message("assistant", response, session_id)
 
@@ -54,9 +55,17 @@ async def get_conversation_state(
     session_id: str,
     request: Request
 ):
+    """ returns the session formatted for the frontend."""
     session_dao = request.app.state.session_dao
-    session = await session_dao.get_session(session_id.id)
-    return session.get_conversation_for_frontend(session_id.id)
+    hash = request.app.state.session_hash
+
+    # ensures valid user login before usage
+    cookie = request.cookies.get("Cookie")
+    if cookie not in hash:
+        return {"conversation": "ERROR: unverified cookie"}
+    
+    session = await session_dao.get_session(session_id)
+    return session.get_conversation_for_frontend(session_id)
 
 @router.post("/{session_id}/message")
 async def send_conversation_state(
@@ -64,8 +73,16 @@ async def send_conversation_state(
     session_id: str,
     message: Message
 ):
+    """sends a message to session with {session_id}. Returns the agent's response."""
     message_dao = request.app.state.message_dao
     session_dao = request.app.state.session_dao
+    hash = request.app.state.session_hash
+
+    # ensures valid user login before usage
+    cookie = request.cookies.get("Cookie")
+    if cookie not in hash:
+        return {"conversation": "ERROR: unverified cookie"}
+    
 
     # add user message to db
     await message_dao.add_message("user", message.message, session_id)
@@ -85,17 +102,33 @@ async def send_conversation_state(
     # respond
     return {"response": response}
 
-async def get_session_name() -> str:
-    # return "temp"
-    # Ensure you have set your OPENROUTER_API_KEY environment variable
+@router.post("/{session_id}/delete")
+async def delete_session(
+    request: Request,
+    session_id: str
+):
+    session_dao = request.app.state.session_dao
+    hash = request.app.state.session_hash
+
+    # ensures valid user login before usage
+    cookie = request.cookies.get("Cookie")
+    if cookie not in hash:
+        return {"conversation": "ERROR: unverified cookie"}
+
+    # deletes session from sessions
+    await session_dao.del_session(session_id)
+    
+async def get_session_name(msg: str) -> str:
+    """returns a session name given an initial prompt."""
+    return "temp"
     api_key = os.getenv("OPENROUTER_API_KEY", "your_api_key_here")
 
     with OpenRouter(api_key=api_key) as open_router:
     # Send a prompt and handle a streaming response
         event_stream = open_router.chat.send(
-            model="anthropic/claude-3.5-sonnet", # Replace with your choice of model
+            model="openai/gpt-4.1-mini",
             messages=[
-                {"role": "user", "content": "Explain quantum computing in one sentence."}
+                {"role": "user", "content": msg}
             ],
             stream=True
     )

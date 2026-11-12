@@ -53,6 +53,6 @@ async def root(
     settings: Annotated[Settings, Depends(get_settings)],
     response: Response
     ):
-    uuid = uuid4()
-    response.set_cookie(key="SESSCOOKIE", value=uuid)
+    uuid = str(uuid4())
+    response.set_cookie(key="Cookie", value=uuid)
     return {"cookie": uuid}

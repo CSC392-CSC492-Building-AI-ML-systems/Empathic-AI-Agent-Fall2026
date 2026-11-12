@@ -4,14 +4,24 @@ import { Input } from './components/buttons/Input';
 import { InitialMood } from './components/chat/InitialMood';
 import { ChatThread } from './components/chat/ChatThread';
 import { PastChatsView } from './components/views/PastChatsView';
+import { LoginView } from './components/views/LoginView';
+import { SettingsView } from './components/views/SettingsView';
+import { AgentThinking } from './components/chat/AgentThinking';
 import './App.css';
 
 function App() {
-	const [activeTab, setActiveTab] = useState('chat'); // 'chat' | 'past_chats'
+	const [activeTab, setActiveTab] = useState('chat'); 
 	const [messages, setMessages] = useState([]);
 	const [inputVal, setInputVal] = useState('');
 	const [sessionId, setSessionId] = useState(null);
 	const sessionFetched = useRef(false);
+	// to simulate thinking -> more empathetic (?)
+	const waitOneSecond = () => new Promise((resolve) => setTimeout(resolve, 1000));
+	const [isTyping, setIsTyping] = useState(false);
+	// userId = null -> not logged in
+	const [userId, setUserId] = useState(null);
+
+	const BASE = "http://localhost:8000";
 
 	// getting session id
 	const makeNewSession = async () => {
@@ -19,14 +29,21 @@ function App() {
 
 		// backend API call
 		try {
-			const response = await fetch("http://localhost:8000/session/", {
+			const response = await fetch(`${BASE}/session/`, {
 				method: 'GET', 
 			});
+
+			// checking for 4xx/5xx status 
+			if (!response.ok) {
+				console.log("Failed to create session, status:", response.status);
+				return;
+			}
 			const session = await response.json();
 			setSessionId(session.session_id);
 			console.log("Current session id: ", session.session_id);
 		}
 		catch (error) {
+			console.log(error);
 			console.log("Error in getting a new session id");
 		}
 	}
@@ -34,32 +51,45 @@ function App() {
 	// immediately create a session
 	// runs when compopnent first loads
 	useEffect(() => {
-    if (!sessionFetched.current) {
-        sessionFetched.current = true;
-        makeNewSession();
-    }
-}, []);
+		if (!sessionFetched.current) {
+			sessionFetched.current = true;
+			makeNewSession();
+		}
+	}, []);
 
 	// backend integration
 	const sendToBackend = async (payload) => {
+		// no session yet -> don't send to /session/null/message
+		if (!sessionId) {
+			console.log("No session id yet, can't send message");
+			return null;
+		}
 		console.log("Sending payload to backend:", payload);
     
 		// backend API call
 		try {
-			const response = await fetch(`http://localhost:8000/session/${sessionId}/message`, {
+			const response = await fetch(`${BASE}/session/${sessionId}/message`, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
 				},
 				body: JSON.stringify({ message: payload.text }),
 			});
+
+			// checking for 4xx/5xx responses
+			if (!response.ok) {
+				console.log("Backend error, status:", response.status);
+				return null;
+			}
+
 			const backendResponse = await response.json();
 			console.log("Received from backend: ", backendResponse);
-			return backendResponse.response
+			return backendResponse.response;
 
 		}
 		catch (error) {
-			console.log("Error in sending msg to backend", error)
+			console.log("Error in sending msg to backend", error);
+			return null;
 		}
 	};
 
@@ -80,7 +110,7 @@ function App() {
 
 		// show initial response like a chat bubble based on user's initial mood
 		setMessages([
-			{ id: Date.now(), sender: 'chat', text: initialResponse },
+			{ id: Date.now(), sender: 'sam', text: initialResponse },
 		]);
 
 	};
@@ -97,6 +127,9 @@ function App() {
 	// get msg from user and display
 	const handleSubmit = async (e) => {
     	e.preventDefault();
+
+		// so user cant send a msg when the agent is responding
+		if (isTyping) return;
     	const trimmedInput = inputVal.trim();
     	if (!trimmedInput) return;
 
@@ -116,67 +149,131 @@ function App() {
 			timestamp: new Date().toISOString(),
 		};
 
-		// sending msg to backend and receiving response
-		const agentResponse = await sendToBackend(userMessagePayload);
+		setInputVal('');
+		setIsTyping(true);
 
+		// sending msg to backend and receiving response
+		// but we wait and have the delay
+		const [agentResponse] = await Promise.all([
+			sendToBackend(userMessagePayload),
+			waitOneSecond()
+		]);
 
 		// will need to get response from backend
 		// display agent response
 		const agentMsg = { 
 			id: Date.now() + 1,
-			sender: 'chat', 
-			text: agentResponse,
+			sender: 'sam', 
+			// ?? falls back on null so if agentResponse = null -> we ask user for input again
+			text: agentResponse ?? "Sorry, can you repeat what you said one more time?",
 			timestamp: new Date().toISOString()
 		};
 
 		setMessages((prev) => [...prev, agentMsg]);
+		setIsTyping(false);
 		
-		setInputVal('');
  	};
 
   	const sidebarTabState =
-    	activeTab === 'past_chats'
+		activeTab === 'settings'
+		? 'settings'
+		: activeTab === 'login' || activeTab === 'signup'
+		? 'login'
+    	: activeTab === 'past_chats'
       	? 'past_chats'
       	: messages.length === 0
       	? 'chat_new'
       	: 'chat_active';
 
+	// showing the temp past chats
+	const handleSelectPastChat = (chat) => {
+		setMessages(chat.messages);
+		setSessionId(chat.sessionId);
+		setActiveTab('chat');
+	};
+
+	const handleLogout = async () => {
+        try {
+			const logoutResponse = await fetch(`${BASE}/login/logout?cache=${userId}`, {
+				method: 'GET',
+				credentials: 'include',
+			});
+
+
+			const loggedOut = await logoutResponse.json();
+			if (loggedOut.logout === 'successful') {
+				setUserId(null);
+				setMessages([]);
+				setActiveTab('chat');
+				makeNewSession();
+			}
+		}
+		catch (error) {
+			console.log(error);
+			console.log("error in logging out");
+		}
+    };
+
   	return (
     	<div className="flex h-screen w-full bg-[#f6f7f5] text-gray-800 font-sans">
-      	<Sidebar
-        	activeTab={sidebarTabState}
-        	onNewChat={handleNewChat}
-        	onOpenPastChats={() => setActiveTab('past_chats')}
-      	/>
 
-      	<main className="flex-1 flex flex-col h-full overflow-hidden relative">
-        	{activeTab === 'past_chats' ? (
-          		<PastChatsView />
-        	) : (
-				<div className="flex-1 flex flex-col h-full justify-between overflow-hidden">
-					{messages.length === 0 ? (
-					<div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-8">
-						<div className="space-y-3">
-						<h1 className="text-4xl font-extrabold text-gray-900">Welcome</h1>
-						<p className="text-2xl text-gray-700">How was your day :)</p>
-						</div>
-						<InitialMood onSelectMood={handleMoodSelect} />
-					</div>
-					) : (
-					<ChatThread messages={messages} />
-					)}
-
-					<div className="p-6 max-w-4xl w-full mx-auto">
-					<Input
-						value={inputVal}
-						onChange={(e) => setInputVal(e.target.value)}
-						onSubmit={handleSubmit}
-						placeholder={messages.length === 0 ? "What is your question" : "Reply..."}
+			{activeTab === 'login' ? (
+				<LoginView
+					onBackToChat={() => setActiveTab('chat')}
+					onLoginSuccess={(id) => setUserId(id)}
+				/>
+			) : (
+				<>
+					<Sidebar
+						activeTab={sidebarTabState}
+						onNewChat={handleNewChat}
+						onOpenPastChats={() => setActiveTab('past_chats')}
+						onOpenLogin={() => setActiveTab('login')}
+						onOpenSettings={() => setActiveTab('settings')}
+						isLoggedIn={Boolean(userId)}
+                        onLogout={handleLogout}
 					/>
-					</div>
-				</div>
+
+					<main className="flex-1 flex flex-col h-full overflow-hidden relative">
+						{activeTab === 'past_chats' ? (
+							<PastChatsView 
+								onSelectChat={handleSelectPastChat} 
+							/>
+						) : activeTab === 'settings' ? (
+							<SettingsView 
+								onBackToChat={() => setActiveTab('chat')} 
+							/>
+						) : (
+							<div className="flex-1 flex flex-col h-full justify-between overflow-hidden">
+								{messages.length === 0 ? (
+								<div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-8">
+									<div className="space-y-3">
+									<h1 className="text-4xl font-extrabold text-gray-900">Welcome</h1>
+									<p className="text-2xl text-gray-700">How was your day ?</p>
+									</div>
+									<InitialMood onSelectMood={handleMoodSelect} />
+								</div>
+								) : (
+								<div className="flex-1 flex flex-col overflow-y-auto">
+									{/* for the thinking before responding of the agent */}
+									<ChatThread messages={messages} isTyping={isTyping} />
+								</div>
+								)}
+
+								<div className="p-6 max-w-4xl w-full mx-auto">
+								<Input
+									value={inputVal}
+									onChange={(e) => setInputVal(e.target.value)}
+									onSubmit={handleSubmit}
+									placeholder={messages.length === 0 ? "What is your question" : "Reply..."}
+									
+								/>
+								</div>
+							</div>
+						)}
+					</main>
+				</>
 			)}
-		</main>
 		</div>
 	);
 }

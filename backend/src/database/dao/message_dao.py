@@ -1,4 +1,5 @@
 from uuid import UUID
+
 from psycopg_pool import AsyncConnectionPool
 
 from ..model.message import Message
@@ -16,9 +17,8 @@ class MessageDao:
             INSERT INTO messages (role, content, session_id)
             VALUES (%s, %s, %s)
         """
-        async with self.pool.connection() as connection:
-            async with connection.cursor() as cursor:
-                await cursor.execute(sql, (role, content, session_id))
+        async with self.pool.connection() as connection, connection.cursor() as cursor:
+            await cursor.execute(sql, (role, content, session_id))
 
     async def get_messages(self, session_id: UUID) -> list[Message]:
         """Get a list of messages from database given session id"""
@@ -29,10 +29,9 @@ class MessageDao:
             WHERE sessions.id = %s
             ORDER BY messages.created_at ASC, messages.id ASC
         """
-        async with self.pool.connection() as connection:
-            async with connection.cursor() as cursor:
-                await cursor.execute(sql, (session_id,))
-                rows = await cursor.fetchall()
+        async with self.pool.connection() as connection, connection.cursor() as cursor:
+            await cursor.execute(sql, (session_id,))
+            rows = await cursor.fetchall()
 
         messages = []
         for row in rows:
