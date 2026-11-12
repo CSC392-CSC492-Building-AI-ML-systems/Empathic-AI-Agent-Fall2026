@@ -1,8 +1,8 @@
-from fastapi import APIRouter, Request, status
-from pydantic import BaseModel
 import os
-from openrouter import OpenRouter
 
+from fastapi import APIRouter, HTTPException, Request, status
+from openrouter import OpenRouter
+from pydantic import BaseModel
 
 from ...agent import fine_tune as model
 
@@ -32,10 +32,10 @@ async def start_conversation_state(
     if cookie in hash:
         user_id = hash[cookie]
     else:
-        return {"session_id": "ERROR: unverified cookie", "response": None}
+        raise HTTPException(status_code=401, detail="Invalid or missing authentication cookie")
 
     # make session name
-    session_name = await get_session_name()
+    session_name = await get_session_name(message.message)
 
     # create new session for user with generated name
     session_id = await session_dao.create_session(user_id, session_name)
@@ -45,6 +45,8 @@ async def start_conversation_state(
 
     # get response from agent and add message to session
     response = await model.send_model([{"role": "user", "content": message.message}])
+    if (response == None):
+        response = ""
     await message_dao.add_message("assistant", response, session_id)
 
     return {"session_id": session_id, "response": response}
@@ -62,10 +64,10 @@ async def get_conversation_state(
     # ensures valid user login before usage
     cookie = request.cookies.get("Cookie")
     if cookie not in hash:
-        return {"conversation": "ERROR: unverified cookie"}
+        raise HTTPException(status_code=401, detail="Invalid or missing authentication cookie")
     
     session = await session_dao.get_session(session_id)
-    return session.get_conversation_for_frontend(session_id)
+    return session.get_conversation_for_frontend()
 
 @router.post("/{session_id}/message")
 async def send_conversation_state(
@@ -81,8 +83,7 @@ async def send_conversation_state(
     # ensures valid user login before usage
     cookie = request.cookies.get("Cookie")
     if cookie not in hash:
-        return {"conversation": "ERROR: unverified cookie"}
-    
+        raise HTTPException(status_code=401, detail="Invalid or missing authentication cookie")
 
     # add user message to db
     await message_dao.add_message("user", message.message, session_id)
@@ -112,8 +113,8 @@ async def delete_session(
 
     # ensures valid user login before usage
     cookie = request.cookies.get("Cookie")
-    if cookie not in hash:
-        return {"conversation": "ERROR: unverified cookie"}
+    if cookie not in hash: 
+        raise HTTPException(status_code=401, detail="Invalid or missing authentication cookie")
 
     # deletes session from sessions
     await session_dao.del_session(session_id)

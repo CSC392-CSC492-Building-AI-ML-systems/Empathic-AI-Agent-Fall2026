@@ -1,7 +1,7 @@
 from uuid import uuid4
 
 import bcrypt
-from fastapi import APIRouter, Request, Response, status
+from fastapi import APIRouter, HTTPException, Request, Response, status
 from pydantic import BaseModel
 
 
@@ -49,7 +49,7 @@ async def create_account(
     # first checks if email can be used
     verified = await user_dao.email_exists(info.email)
     if (verified):
-         return {"user_id": "ERROR: email exists"}
+        raise HTTPException(status_code=404, detail="Email already exists")
 
     # then hashes password
     password_bytes = info.password.encode('utf-8')
@@ -59,7 +59,7 @@ async def create_account(
     # creates a user in the database, sets cookie, adds the cookie to uuid to session hash
     user_id = await user_dao.create_user("temp first name", "temp last name", info.email, hashed_password, info.profile, info.nickname)
     if (user_id is None):
-         return {"user_id": "ERROR: database error"}
+         raise HTTPException(status_code=500, detail="Database error")
     cookie = str(uuid4())
     response.set_cookie(key="Cookie", value=cookie)
     hash = request.app.state.session_hash
@@ -75,11 +75,12 @@ async def login(
     ):
     """ attemps login using the given login info. If login is successful, cookie is set as 'Cookie' and maps to uuid in session hash"""
     user_dao = request.app.state.user_dao
+    session_dao = request.app.state.session_dao
 
     # checks if login information is valid
     uuid = await user_dao.authenticate_user(info.email, info.password) 
 
-    if (uuid is not None ):
+    if (uuid is not None):
         user = await user_dao.get_user(uuid)
         nickname = user.nickname
 
@@ -88,10 +89,15 @@ async def login(
         response.set_cookie(key="Cookie", value=cookie)    
         hash = request.app.state.session_hash
         hash[cookie] = uuid
+        user = await user_dao.get_user(uuid)
+        session_ids = await session_dao.get_session_ids(uuid)
+        sessions = []
+        for sid in session_ids:
+             sessions.append({"session_id": sid[0], "session_name": sid[1]})
 
-        return {"user_id": cookie, "nickname": nickname}
+        return {"user_id": cookie, "nickname": nickname, "sessions": sessions}
     else:
-        return {"user_id": "None"}
+        return {"user_id": "None", "nickname": None, "sessions": None}
 
 @router.get("/logout")
 async def logout(
