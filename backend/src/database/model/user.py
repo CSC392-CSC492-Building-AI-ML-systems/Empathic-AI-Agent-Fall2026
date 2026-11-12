@@ -1,22 +1,12 @@
+from dataclasses import dataclass
 from uuid import UUID
 
-
+"""Class representing a stored user"""
+@dataclass
 class User:
-    """Class representing an entry in the users table"""
-
-    def __init__(self,
-                 user_id: UUID,
-                 first_name: str,
-                 last_name: str,
-                 email: str,
-                 password: str,
-                 nickname: str | None) -> None:
-
-        self.user_id = user_id
-        self.first_name = first_name
-        self.last_name = last_name
-        self.email = email
-        self.password = password
-        self.nickname = nickname
+    user_id: UUID
+    email: str
+    password: str
+    name: str | None
 
 

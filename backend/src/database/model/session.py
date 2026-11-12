@@ -1,50 +1,40 @@
+from dataclasses import dataclass
 from datetime import datetime
 from uuid import UUID
 
 from .message import Message
 
-
+"""Class representing a stored session"""
+@dataclass
 class Session:
-    """Class representing an entry in the session table"""
-
-    def __init__(self,
-                 session_id: UUID,
-                 created_at: datetime,
-                 context: str,
-                 tool_context: str,
-                 terminated: bool,
-                 user_id: UUID,
-                 name: str | None = None) -> None:
-        self.session_id = session_id
-        self.context = context
-        self.tool_context = tool_context
-        self.terminated = terminated
-        self.user_id = user_id
-        self.name = name
-        self.created_at = created_at
-        self.messages: list[Message] = []
-
-    def get_created_at(self) -> datetime:
-        """Return the creation timestamp saved by the database."""
-        return self.created_at
+    session_id: UUID
+    created_at: datetime
+    context: str
+    tool_context: str
+    terminated: bool
+    user_id: UUID
+    name: str | None
+    messages: list[Message]
 
     def add_message(self, message: Message) -> None:
         """Add Message object to own list of messages"""
         self.messages.append(message)
 
     def get_conversation_for_model(self) -> list[dict[str, str]]:
+        """Get list of conversation history for model"""
         convo_history = []
         for message in self.messages:
-            convo_history.append({"role": message.get_role(),
-                                  "content": message.get_content()})
+            convo_history.append({"role": message.role,
+                                  "content": message.content})
         return convo_history
 
     def get_conversation_for_frontend(self) -> list[dict[str, str, datetime]]:
+        """Get list of conversation history for frontend"""
         convo_history = []
         for message in self.messages:
-            if message.get_role() == "tool":
+            if message.role == "tool":
                 continue
-            convo_history.append({"role": message.get_role(),
-                                  "content": message.get_content(),
-                                  "created_at": message.get_created_at()})
+            convo_history.append({"role": message.role,
+                                  "content": message.content,
+                                  "created_at": message.created_at})
         return convo_history
