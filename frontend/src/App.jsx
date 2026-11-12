@@ -150,7 +150,6 @@ function App() {
     	setMessages([]);
     	setInputVal('');
 		setSessionId(null);
-		startSession();
 	};
 	
 	// get msg from user and display
@@ -243,13 +242,25 @@ function App() {
 
 
 			const loggedOut = await logoutResponse.json();
+			// DEBUGGING ONLY 
+			console.log("am i able to logout...???", loggedOut.logout);
+
+			// successfully logging out clear all msgs and session id and user id
+			// bring user back to the logout state
 			if (loggedOut.logout === 'successful') {
 				setUserId(null);
 				setMessages([]);
 				setSessionId(null);
 				setActiveTab('login');
+
+				// DEBUGGING ONLY
+				console.log("logging out userid: ", userId);
+				console.log("logging out sessionid: ", sessionId);
 				console.log("successfully logged out :D");
+				return;
 			}
+
+			// failed to logout idk what we should do yet
 			console.log("erm could not logout successfully.....oopsies");
 			
 		}
@@ -267,8 +278,7 @@ function App() {
 					onBackToChat={() => setActiveTab('chat')}
 					onLoginSuccess={(id) => {
 						setUserId(id);
-						startSession();
-						console.log(`this is the userId: ${userId}`);
+						console.log(`this is the userId: ${id}`);
 						setTimeout(() => setActiveTab('chat'), 2000);
 					}}
 				/>
@@ -278,7 +288,7 @@ function App() {
 						activeTab={sidebarTabState}
 						onNewChat={handleNewChat}
 						onOpenPastChats={() => setActiveTab('past_chats')}
-						onOpenLogin={() => setActiveTab('login')}
+						// onOpenLogin={() => setActiveTab('login')}
 						onOpenSettings={() => setActiveTab('settings')}
 						isLoggedIn={Boolean(userId)}
                         onLogout={handleLogout}
