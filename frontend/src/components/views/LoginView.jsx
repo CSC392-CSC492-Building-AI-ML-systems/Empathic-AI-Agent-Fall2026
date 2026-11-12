@@ -4,7 +4,7 @@ import { Input } from '../buttons/Input';
 import { YesOrNoButton } from '../buttons/YesOrNoButton';
 
 
-export function LoginView({onBackToChat}) {
+export function LoginView({onBackToChat, onLoginSuccess}) {
 
     // initial message from agent
     const [messages, setMessages] = useState(() => [
@@ -228,6 +228,10 @@ export function LoginView({onBackToChat}) {
                 setPassword(trimmedInput);
                 // when everything is good -> create account
                 setUserId( await createAccount(username, email, password) );
+                // notify main
+                if (userId) {
+                    onLoginSuccess(userId);
+                }
 
                 const doneMsg = {
                     id: Date.now() + 1,
@@ -254,6 +258,11 @@ export function LoginView({onBackToChat}) {
             if (loginOrSignup === 'login' && userExists === 'true') {
                 // try to login to account and get the user id
                 setUserId( await loginToAccount(trimmedInput) );
+                // notify main
+                if (userId) {
+                    onLoginSuccess(userId);
+                }
+
                 console.log("the below is userID");
                 console.log(userId);
                 if (userId != null) {
@@ -265,7 +274,7 @@ export function LoginView({onBackToChat}) {
                     const doneMsg = {
                         id: Date.now() + 1,
                         sender: 'sam',
-                        text: `Ok :D I have all the info I need now. It was a pleasure to meet you ${username}!`,
+                        text: `Ok :D I have all the info I need now. You are all logged in now!`,
                         timestamp: new Date().toISOString()
                     };
                     

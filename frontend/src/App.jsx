@@ -18,6 +18,10 @@ function App() {
 	// to simulate thinking -> more empathetic (?)
 	const waitOneSecond = () => new Promise((resolve) => setTimeout(resolve, 1000));
 	const [isTyping, setIsTyping] = useState(false);
+	// userId = null -> not logged in
+	const [userId, setUserId] = useState(null);
+
+	const BASE = "http://localhost:8000";
 
 	// getting session id
 	const makeNewSession = async () => {
@@ -25,7 +29,7 @@ function App() {
 
 		// backend API call
 		try {
-			const response = await fetch("http://localhost:8000/session/", {
+			const response = await fetch(`${BASE}/session/`, {
 				method: 'GET', 
 			});
 			const session = await response.json();
@@ -53,7 +57,7 @@ function App() {
     
 		// backend API call
 		try {
-			const response = await fetch(`http://localhost:8000/session/${sessionId}/message`, {
+			const response = await fetch(`${BASE}/session/${sessionId}/message`, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
@@ -168,6 +172,28 @@ function App() {
 		setActiveTab('chat');
 	};
 
+	const handleLogout = async () => {
+        try {
+			const logoutResponse = await fetch(`$BASE/logout?cache=${userId}`, {
+				method: 'GET',
+				credentials: 'include',
+			});
+
+
+			const loggedOut = await logoutResponse.json();
+			if (loggedOut.logout === 'successful') {
+				setUserId(null);
+				setMessages([]);
+				setActiveTab('chat');
+				makeNewSession();
+			}
+		}
+		catch (error) {
+			console.log(error);
+			console.log("error in logging out");
+		}
+    };
+
   	return (
     	<div className="flex h-screen w-full bg-[#f6f7f5] text-gray-800 font-sans">
 
@@ -183,6 +209,8 @@ function App() {
 						onOpenPastChats={() => setActiveTab('past_chats')}
 						onOpenLogin={() => setActiveTab('login')}
 						onOpenSettings={() => setActiveTab('settings')}
+						isLoggedIn={Boolean(userId)}
+                        onLogout={handleLogout}
 					/>
 
 					<main className="flex-1 flex flex-col h-full overflow-hidden relative">
