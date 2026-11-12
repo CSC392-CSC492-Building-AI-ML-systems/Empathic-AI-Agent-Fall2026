@@ -6,7 +6,8 @@ ALTER TABLE sessions
 ALTER TABLE users
     DROP COLUMN profile,
     DROP COLUMN first_name,
-    DROP COLUMN last_name,
+    DROP COLUMN last_name;
+ALTER TABLE users
     RENAME COLUMN nickname TO name;
 
 CREATE TABLE user_memories (
