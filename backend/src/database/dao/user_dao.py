@@ -15,21 +15,18 @@ class UserDao:
 
 
     async def create_user(self,
-                          first_name: str,
-                          last_name: str,
                           email: str,
                           password: str,
-                          profile: str,
-                          nickname: str) -> UUID | None:
+                          name: str) -> UUID | None:
         """Create a user and return its ID"""
         user_id = uuid4()
         sql = """
-            INSERT INTO users (id, profile, first_name, last_name, nickname, email, password)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            INSERT INTO users (id, name, email, password)
+            VALUES (%s, %s, %s, %s)
         """
         try:
             async with self.pool.connection() as connection, connection.cursor() as cursor:
-                await cursor.execute(sql,(user_id, profile, first_name, last_name, nickname, email, password),)
+                await cursor.execute(sql,(user_id, name, email, password),)
         except Error:
             return None
 
@@ -74,8 +71,9 @@ class UserDao:
     async def get_user(self, user_id: UUID) -> User | None:
         """Return all user info given a user ID"""
         sql = """
-            SELECT id, first_name, last_name, email, password, profile, nickname
-            FROM users WHERE id = %s
+            SELECT id, name, email, password
+            FROM users 
+            WHERE id = %s
         """
 
         async with self.pool.connection() as connection, connection.cursor() as cursor:
@@ -86,31 +84,25 @@ class UserDao:
             return None
 
         return User(user_id=row[0],
-                    first_name=row[1],
-                    last_name=row[2],
-                    email=row[3],
-                    password=row[4],
-                    profile=row[5],
-                    nickname=row[6])
+                    name=row[1],
+                    email=row[2],
+                    password=row[3])
 
 
     async def update_user(self,
                           user_id: UUID,
-                          first_name: str,
-                          last_name: str,
+                          name: str,
                           email: str,
-                          password: str,
-                          profile: str,
-                          nickname: str) -> bool:
+                          password: str) -> bool:
         """Replace a user's information and return whether the user exists"""
         sql = """
             UPDATE users
-            SET first_name = %s, last_name = %s, email = %s, password = %s, profile = %s, nickname = %s
+            SET name = %s, email = %s, password = %s
             WHERE id = %s RETURNING id
         """
         try:
             async with self.pool.connection() as connection, connection.cursor() as cursor:
-                await cursor.execute(sql,(first_name, last_name, email, password, profile, nickname, user_id),)
+                await cursor.execute(sql,(name, email, password, user_id),)
                 row = await cursor.fetchone()
 
         except Error:
@@ -120,10 +112,43 @@ class UserDao:
 
 
     async def del_user(self, user_id: UUID) -> None:
-        """Delete a user and their sessions and messages."""
+        """Delete a user and their sessions, messages, and memories."""
         sql = """
             DELETE FROM users
             WHERE id = %s
         """
         async with self.pool.connection() as connection, connection.cursor() as cursor:
             await cursor.execute(sql, (user_id,))
+
+
+    async def get_memories(self, user_id: UUID) -> dict[str, str]:
+        """Get a user's stored memories"""
+        sql = """
+            SELECT memory_key, content
+            FROM user_memories
+            WHERE user_id = %s
+            ORDER BY memory_key ASC
+        """
+        async with self.pool.connection() as connection, connection.cursor() as cursor:
+            await cursor.execute(sql, (user_id,))
+            rows = await cursor.fetchall()
+
+        memories = {}
+        for row in rows:
+            memories[row[0]] = row[1]
+        return memories
+
+
+    async def upsert_memory(self, user_id: UUID, memory_key: str, content: str) -> None:
+        """Save a memory, replacing the content if the user's key already exists"""
+        if not memory_key.strip():
+            raise ValueError("memory_key must not be empty")
+
+        sql = """
+            INSERT INTO user_memories (user_id, memory_key, content)
+            VALUES (%s, %s, %s)
+            ON CONFLICT (user_id, memory_key) DO UPDATE
+            SET content = EXCLUDED.content
+        """
+        async with self.pool.connection() as connection, connection.cursor() as cursor:
+            await cursor.execute(sql, (user_id, memory_key, content))

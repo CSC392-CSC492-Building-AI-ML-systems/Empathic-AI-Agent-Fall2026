@@ -1,14 +1,12 @@
 import asyncio
-import os
+import json
 
 import requests
 
+from ..api.config import Settings
+from ..database.model.session import Session
+
 ENDPOINT_URL = "https://6ae1805fab20e518b003b166.endpoints.huggingface.cloud"
-
-API_KEY = (os.getenv("HF_TOKEN")).strip()
-
-if not API_KEY:
-    raise RuntimeError("HF_TOKEN is missing from the backend environment.")
 
 SYSTEM_INSTRUCTIONS = """
 You are a helpful conversational assistant. Be warm, natural, and concise.
@@ -29,8 +27,11 @@ If the user prefers to stay, continue without repeating the suggestion.
 Do not claim to be human or to have opened a new chat.
 """.strip()
 
-
 async def request_async(method: str, path: str, payload=None) -> dict:
+    API_KEY = Settings().hf_token
+    if not API_KEY:
+        raise RuntimeError("HF_TOKEN is missing from the backend environment.")
+
     response = await asyncio.to_thread(
         requests.request,
         method,
@@ -73,7 +74,7 @@ async def model_reply(messages: list, model_id: str) -> str:
         {
             "model": model_id,
             "messages": messages,
-            "max_tokens": 500,
+            "max_tokens": 1000,
             "temperature": 0,
             "stream": False,
         },
@@ -88,23 +89,29 @@ async def model_reply(messages: list, model_id: str) -> str:
     return answer
 
 
-async def send_model(messages: list) -> str:
-    if not API_KEY:
+async def send_model(session: Session, memories: dict[str, str]) -> str:
+    if not Settings().hf_token:
         print("Run 'hf auth login', or set HF_TOKEN on your backend.")
-        return
+        return ""
 
     try:
         model_id = await get_model_id()
     except (requests.RequestException, RuntimeError, ValueError) as error:
         print(f"Connection error: {error}")
-        return
+        return ""
     print("Connected.")
-    messages = [{"role": "system", "content": SYSTEM_INSTRUCTIONS}] + messages
+    messages = [{"role": "system", "content": SYSTEM_INSTRUCTIONS}]
+    if memories:
+        messages.append({"role": "system", "content": "Saved user memories: " + json.dumps(memories)})
+
+    for message in session.get_conversation_for_model():
+        if message["role"] in ("user", "assistant"):
+            messages.append(message)
     try:
         answer = await model_reply(messages, model_id)
     except (requests.RequestException, RuntimeError, ValueError) as error:
         print(f"Request error: {error}")
-        return
+        return ""
 
     return answer
 

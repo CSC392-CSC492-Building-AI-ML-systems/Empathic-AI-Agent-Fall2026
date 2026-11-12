@@ -54,7 +54,14 @@ def test_history_from_database_fits_turn() -> None:
     """A conversation the way the app loads it should convert to turns without errors"""
 
     now = datetime.now(UTC)
-    session = Session(uuid4(), now)
+    session = Session(session_id=uuid4(),
+                      created_at=now,
+                      context="",
+                      tool_context="",
+                      terminated=False,
+                      name="",
+                      messages=[],
+                      user_id=uuid4())
     session.add_message(Message(1, "user", "I want to get better at running.", now))
     session.add_message(Message(2, "assistant", "Farther or faster?", now))
 

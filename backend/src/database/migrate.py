@@ -43,11 +43,11 @@ def apply_migrations(connection: psycopg.Connection) -> None:
             )
         connection.execute(
             """
-            INSERT INTO users (id, first_name, last_name, email, password)
-            VALUES (%s, %s, %s, %s, %s)
+            INSERT INTO users (id, name, email, password)
+            VALUES (%s, %s, %s, %s)
             ON CONFLICT (id) DO NOTHING
             """,
-            (TEST_USER_ID, "Tyler", "Holden", "tyler@the.goat", "ilovetylerholden"),
+            (TEST_USER_ID, "Tyler", "tyler@the.goat", "ilovetylerholden"),
         )
 
 
