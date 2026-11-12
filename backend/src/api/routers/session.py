@@ -3,7 +3,6 @@ import uuid
 from fastapi import APIRouter, Request, status
 from pydantic import BaseModel
 
-from ...agent import fine_tune as model
 from ...agent.job import Job
 
 
@@ -25,8 +24,7 @@ async def start_conversation_state(
     session_dao = request.app.state.session_dao
 
     TEST_USER_ID = uuid.UUID("00000000-0000-0000-0000-000000000001")
-    session_id = await session_dao.create_session(TEST_USER_ID, "tylerholden")
-
+    session_id = await session_dao.create_session(TEST_USER_ID, "", "", False, "tylerholden")
     return {"session_id": str(session_id)}
 
 
@@ -47,15 +45,3 @@ async def send_conversation_state(request: Request, session_id: str, message: Me
     result = await job.run()
 
     return {"response": result}
-
-
-
-
-    # send session state to model and get response
-    response = await model.send_model(convo_history)
-
-    # add assistant response to db
-    await message_dao.add_message("assistant", response, session_id)
-
-    # respond
-    return {"response": response}

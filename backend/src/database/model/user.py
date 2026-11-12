@@ -10,7 +10,6 @@ class User:
                  last_name: str,
                  email: str,
                  password: str,
-                 profile: str | None,
                  nickname: str | None) -> None:
 
         self.user_id = user_id
@@ -18,7 +17,6 @@ class User:
         self.last_name = last_name
         self.email = email
         self.password = password
-        self.profile = profile
         self.nickname = nickname
 
 
