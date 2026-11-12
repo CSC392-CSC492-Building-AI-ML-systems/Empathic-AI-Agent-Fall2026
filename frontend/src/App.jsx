@@ -15,6 +15,7 @@ function App() {
 	const [messages, setMessages] = useState([]);
 	const [inputVal, setInputVal] = useState('');
 	const [sessionId, setSessionId] = useState(null);
+	const [sessions, setSessions] = useState([]);
 	// IF IMPLEMENT GUEST STATE
 	// const sessionFetched = useRef(false);
 
@@ -145,8 +146,10 @@ function App() {
 	};
 
 	// new chat resetting everything
+	// save curr session to sessions if there are messages
 	// brings back to og state
 	const handleNewChat = () => {
+		saveCurrentSession();
     	setActiveTab('chat');
     	setMessages([]);
     	setInputVal('');
@@ -201,6 +204,15 @@ function App() {
 			waitOneSecond()
 		]);
 
+		// TODO
+		// check if agentResponse indicates we should create a popup
+		// yes -> save to sessions and open new chat
+		// no -> stay in current chat
+
+		// TODO
+		// check if agentResponse indicates we should terminate the session
+		// what should i do
+
 		// will need to get response from backend
 		// display agent response
 		const agentMsg = { 
@@ -210,7 +222,7 @@ function App() {
 			text: agentResponse ?? "Sorry, can you repeat what you said one more time?",
 			timestamp: new Date().toISOString()
 		};
-
+		console.log("THIS IS MY CURR SESSID: ", sessionId);
 		setMessages((prev) => [...prev, agentMsg]);
 		setIsTyping(false);
 		
@@ -228,10 +240,51 @@ function App() {
       	: 'chat_active';
 
 	// showing the temp past chats
-	const handleSelectPastChat = (chat) => {
-		setMessages(chat.messages);
-		setSessionId(chat.sessionId);
+	const handleSelectPastChat = async (chatSession) => {
+		// get the actual chat from the backend
+		try {
+			const pastChatResponse = await fetch(`${BASE}/session/${chatSession.session_id}`, {
+				method: 'POST',
+				credentials: 'include',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+			});
+
+			if (!pastChatResponse.ok) {
+				console.log("failed to load convo history");
+				return;
+			}
+
+			// response from backend is list of all convo history
+			// each past chat history has role, content, created_at
+			const pastChats = await pastChatResponse.json();
+			// populate convo history so we can set into msgs
+			
+			const convoHistory = pastChats.map((pastChatHistory) => ({
+				id: crypto.randomUUID(),
+				sender: pastChatHistory.role === 'assistant' ? 'sam' : 'user',
+				text: pastChatHistory.content,
+				timestamp: pastChatHistory.created_at
+			}));
+
+			setMessages(convoHistory);
+			setSessionId(chatSession.session_id);
+		}
+		
+		catch (error) {
+			console.log(error);
+			console.log("error in retrieving past chat with a session");
+		}
+
+		
 		setActiveTab('chat');
+	};
+
+	const handleOpenPastChats = () => {
+		// save current session
+		saveCurrentSession();
+		setActiveTab('past_chats');
 	};
 
 	const handleLogout = async () => {
@@ -271,15 +324,48 @@ function App() {
 		}
     };
 
+
+	const saveCurrentSession = () => {
+		// save if there's an active session and some messages
+		if (!sessionId || messages.length === 0) return;
+
+		// check if this session is already in the sessions list
+		const existingIndex = sessions.findIndex(s => s.session_id === sessionId);
+
+		// create temp session name
+		// replace with calling backend to generate a session name
+		const sessionName = "temp";
+
+		if (existingIndex >= 0) {
+			// Update existing session in state if needed
+			const updatedSessions = [...sessions];
+			updatedSessions[existingIndex] = {
+				session_id: sessionId,
+				session_name: sessionName
+			};
+			setSessions(updatedSessions);
+		} 
+		else {
+			// Append new session to the top/bottom of the array
+			setSessions(prev => [
+				{ session_id: sessionId, session_name: sessionName },
+				...prev
+			]);
+		}
+	};
+
   	return (
     	<div className="flex h-screen w-full bg-[#f6f7f5] text-gray-800 font-sans">
 
 			{activeTab === 'login' ? (
 				<LoginView
 					onBackToChat={() => setActiveTab('chat')}
-					onLoginSuccess={(id) => {
-						setUserId(id);
-						console.log(`this is the userId: ${id}`);
+					onLoginSuccess={(loginId, loginSessions) => {
+						setUserId(loginId);
+						// used for retrieving past chats
+						setSessions(loginSessions);
+						console.log(`this is the userId: ${loginId}`);
+						console.log(`these are all the sessions associated with this user: ${loginSessions}`);
 						setTimeout(() => setActiveTab('chat'), 2000);
 					}}
 				/>
@@ -288,7 +374,7 @@ function App() {
 					<Sidebar
 						activeTab={sidebarTabState}
 						onNewChat={handleNewChat}
-						onOpenPastChats={() => setActiveTab('past_chats')}
+						onOpenPastChats={handleOpenPastChats}
 						// onOpenLogin={() => setActiveTab('login')}
 						onOpenSettings={() => setActiveTab('settings')}
 						isLoggedIn={Boolean(userId)}
@@ -299,6 +385,7 @@ function App() {
 						{activeTab === 'past_chats' ? (
 							<PastChatsView 
 								onSelectChat={handleSelectPastChat} 
+								sessions={sessions}
 							/>
 						) : activeTab === 'settings' ? (
 							<SettingsView 

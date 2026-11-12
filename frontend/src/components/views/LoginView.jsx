@@ -4,7 +4,7 @@ import { Input } from '../buttons/Input';
 import { YesOrNoButton } from '../buttons/YesOrNoButton';
 
 // add in onBackToChat when implement guest state
-export function LoginView({ onLoginSuccess}) {
+export function LoginView({ onLoginSuccess }) {
 
     // initial message from agent
     const [messages, setMessages] = useState(() => [
@@ -240,7 +240,8 @@ export function LoginView({ onLoginSuccess}) {
                 }
 
                 setUserId(newUserId);
-                onLoginSuccess(newUserId);
+                // no sessions yet for a new user
+                onLoginSuccess(newUserId, []);
                 setPassword(trimmedInput);
                 await agentMsg(`Ok :D I have all the info I need now. It was a pleasure to meet you ${username}!`);
                 console.log("-----------------completed signup---------------------");
@@ -260,7 +261,7 @@ export function LoginView({ onLoginSuccess}) {
                     newUserId = await loginToAccount(trimmedInput);
                 }
 
-                if (!newUserId) {
+                if (!newUserId.user_id) {
                     setShowPassword(false);
                     await agentMsg("Hey, I think you entered the wrong password, or your account doesn't exist. Please try again!");
                     setPasswordAttempts(passwordAttempts + 1);
@@ -279,8 +280,8 @@ export function LoginView({ onLoginSuccess}) {
                     return;
                 }
 
-                setUserId(newUserId);
-                onLoginSuccess(newUserId);
+                setUserId(newUserId.user_id);
+                onLoginSuccess(newUserId.user_id, newUserId.sessions);
                 setPassword(trimmedInput);
                 await agentMsg("Ok :D I have all the info I need now. You are all logged in now!");
                 console.log("-----------------completed login---------------------");
@@ -438,7 +439,7 @@ export function LoginView({ onLoginSuccess}) {
                 method: 'POST',
                 credentials: 'include',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify( {email, password, cookie: ''} ),
+                body: JSON.stringify( {email, password} ),
             });
 
             if (!loginResponse.ok) {
@@ -451,7 +452,7 @@ export function LoginView({ onLoginSuccess}) {
                 return null;
             }
             
-            return isLoggedIn.user_id;
+            return isLoggedIn;
         }
         
         catch (error) {
