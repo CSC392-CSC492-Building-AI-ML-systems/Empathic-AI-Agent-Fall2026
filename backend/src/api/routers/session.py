@@ -121,19 +121,19 @@ async def delete_session(
     
 async def get_session_name(msg: str) -> str:
     """returns a session name given an initial prompt."""
-    return "temp"
-    api_key = os.getenv("OPENROUTER_API_KEY", "your_api_key_here")
+    # return "temp"
 
-    with OpenRouter(api_key=api_key) as open_router:
-    # Send a prompt and handle a streaming response
-        event_stream = open_router.chat.send(
-            model="openai/gpt-4.1-mini",
-            messages=[
-                {"role": "user", "content": msg}
-            ],
-            stream=True
-    )
-    
-    for event in event_stream:
-        # Process and print each chunk as it arrives
-        print(event, end="", flush=True)
+    with OpenRouter(api_key=os.getenv("OPENROUTER_API_KEY")) as client:
+        response = client.responses.send(
+            model="google/gemini-3.8-flash", # Replace with any OpenRouter model ID
+            input="Generate a short and simple chat title according to the request:" + msg
+        )
+        
+        # Extract the text response
+        for item in response.output:
+            if item.type == "message":
+                for part in item.content:
+                    if part.type == "output_text":
+                        print(part.text)
+                        return part.text
+        return "temp"
