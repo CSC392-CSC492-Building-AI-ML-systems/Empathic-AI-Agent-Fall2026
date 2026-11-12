@@ -1,4 +1,5 @@
 import json
+from collections import Counter
 from pathlib import Path
 from typing import Any, get_args
 
@@ -213,6 +214,16 @@ def test_examples_file_is_valid_and_covers_every_category() -> None:
 
     cases = load_cases(DATASET_DIR / "examples.jsonl")
     assert {case.category for case in cases} == set(get_args(Category))
+
+
+def test_cases_file_is_valid_and_covers_every_category() -> None:
+    """The harness runs on this file, so every category needs enough cases"""
+
+    cases = load_cases(DATASET_DIR / "cases.jsonl")
+    counts = Counter(case.category for case in cases)
+    for category in get_args(Category):
+        assert counts[category] >= 5, f"only {counts[category]} '{category}' cases"
+    assert {case.gold_kind for case in cases} == {"clarify", "answer"}
 
 
 def test_guide_mentions_every_category() -> None:
