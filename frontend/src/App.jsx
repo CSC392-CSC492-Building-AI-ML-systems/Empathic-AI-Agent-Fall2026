@@ -10,52 +10,79 @@ import { AgentThinking } from './components/chat/AgentThinking';
 import './App.css';
 
 function App() {
-	const [activeTab, setActiveTab] = useState('chat'); 
+	// start in the loginview -> no guest state for now
+	const [activeTab, setActiveTab] = useState('login'); 
 	const [messages, setMessages] = useState([]);
 	const [inputVal, setInputVal] = useState('');
 	const [sessionId, setSessionId] = useState(null);
 	const sessionFetched = useRef(false);
+
 	// to simulate thinking -> more empathetic (?)
 	const waitOneSecond = () => new Promise((resolve) => setTimeout(resolve, 1000));
 	const [isTyping, setIsTyping] = useState(false);
+
 	// userId = null -> not logged in
 	const [userId, setUserId] = useState(null);
 
 	const BASE = "http://localhost:8000";
 
-	// getting session id
-	const makeNewSession = async () => {
-		console.log("Getting a new session id from backend");
+	// starting a session with the backend
+	// occurs AFTER sending one message
+	// RETURNS the agent's response
+	// SETS the session id
+	// null -> failed to create session
+	const startSession = async (payload) => {
+		console.log("starting a new session, will get agent's respnse and session id");
+		console.log("sending first msg: ", payload);
 
 		// backend API call
 		try {
-			const response = await fetch(`${BASE}/session/`, {
-				method: 'GET', 
+			const startSessionResponse = await fetch(`${BASE}/session/`, {
+				method: 'POST', 
+				credentials: 'include',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ message: payload.text }),
+
 			});
 
-			// checking for 4xx/5xx status 
-			if (!response.ok) {
-				console.log("Failed to create session, status:", response.status);
-				return;
+			// failed to create a new session -> print status to know why
+			if (!startSessionResponse.ok) {
+				console.log("failed to create session, status:", startSessionResponse.status);
+				return null;
 			}
-			const session = await response.json();
-			setSessionId(session.session_id);
-			console.log("Current session id: ", session.session_id);
+			
+			const startedSession = await startSessionResponse.json();
+
+			// invalid user login state -> send back to login view
+			if (startedSession.session_id === 'ERROR: unverified cookie') {
+				setUserId(null);
+				setMessages([]);
+				setActiveTab('login');
+				return null;
+			}
+
+			setSessionId(startedSession.session_id);
+			console.log("cureent session id: ", startedSession.session_id);
+
+			// agent response
+			return startedSession.response;
 		}
 		catch (error) {
 			console.log(error);
-			console.log("Error in getting a new session id");
+			console.log("error in starting a new session");
+			return null;
 		}
 	}
 
 	// immediately create a session
 	// runs when compopnent first loads
-	useEffect(() => {
-		if (!sessionFetched.current) {
-			sessionFetched.current = true;
-			makeNewSession();
-		}
-	}, []);
+	// keeping in case we decide to do guest state later on
+	// useEffect(() => {
+	//	if (!sessionFetched.current) {
+	//		sessionFetched.current = true;
+	//		startSession();
+	//	}
+	// }, []);
 
 	// backend integration
 	const sendToBackend = async (payload) => {
@@ -70,6 +97,7 @@ function App() {
 		try {
 			const response = await fetch(`${BASE}/session/${sessionId}/message`, {
 				method: 'POST',
+				credentials: 'include',
 				headers: {
 					'Content-Type': 'application/json',
 				},
@@ -121,7 +149,8 @@ function App() {
     	setActiveTab('chat');
     	setMessages([]);
     	setInputVal('');
-		makeNewSession();
+		setSessionId(null);
+		startSession();
 	};
 	
 	// get msg from user and display
@@ -130,6 +159,7 @@ function App() {
 
 		// so user cant send a msg when the agent is responding
 		if (isTyping) return;
+
     	const trimmedInput = inputVal.trim();
     	if (!trimmedInput) return;
 
@@ -152,10 +182,22 @@ function App() {
 		setInputVal('');
 		setIsTyping(true);
 
+		// decide which call to backend we use
+		// first msg -> start a session and get session id
+		// everything else -> send msg normally
+		let backendCall;
+		if (sessionId) {
+			backendCall = sendToBackend(userMessagePayload);
+		}
+
+		else {
+			backendCall = startSession(userMessagePayload);
+		}
+
 		// sending msg to backend and receiving response
 		// but we wait and have the delay
 		const [agentResponse] = await Promise.all([
-			sendToBackend(userMessagePayload),
+			backendCall,
 			waitOneSecond()
 		]);
 
@@ -194,7 +236,7 @@ function App() {
 
 	const handleLogout = async () => {
         try {
-			const logoutResponse = await fetch(`${BASE}/login/logout?cache=${userId}`, {
+			const logoutResponse = await fetch(`${BASE}/login/logout`, {
 				method: 'GET',
 				credentials: 'include',
 			});
@@ -204,9 +246,12 @@ function App() {
 			if (loggedOut.logout === 'successful') {
 				setUserId(null);
 				setMessages([]);
-				setActiveTab('chat');
-				makeNewSession();
+				setSessionId(null);
+				setActiveTab('login');
+				console.log("successfully logged out :D");
 			}
+			console.log("erm could not logout successfully.....oopsies");
+			
 		}
 		catch (error) {
 			console.log(error);
@@ -220,7 +265,12 @@ function App() {
 			{activeTab === 'login' ? (
 				<LoginView
 					onBackToChat={() => setActiveTab('chat')}
-					onLoginSuccess={(id) => setUserId(id)}
+					onLoginSuccess={(id) => {
+						setUserId(id);
+						startSession();
+						console.log(`this is the userId: ${userId}`);
+						setTimeout(() => setActiveTab('chat'), 2000);
+					}}
 				/>
 			) : (
 				<>
