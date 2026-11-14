@@ -2,7 +2,7 @@ from uuid import uuid4
 
 import bcrypt
 from fastapi import APIRouter, HTTPException, Request, Response, status
-from pydantic import BaseModel
+from pydantic import AliasChoices, BaseModel, Field
 
 
 class login(BaseModel):
@@ -10,10 +10,9 @@ class login(BaseModel):
     password: str
 
 class UserCreation(BaseModel):
-        email: str
-        password: str
-        profile: str
-        nickname: str
+    email: str
+    password: str
+    name: str
 
 class email_prompt(BaseModel):
      email:str
@@ -48,7 +47,7 @@ async def create_account(
 
     # first checks if email can be used
     verified = await user_dao.email_exists(info.email)
-    if (verified):
+    if verified:
         raise HTTPException(status_code=404, detail="Email already exists")
 
     # then hashes password
@@ -57,7 +56,7 @@ async def create_account(
     hashed_password = bcrypt.hashpw(password_bytes, salt).decode("utf-8")
 
     # creates a user in the database, sets cookie, adds the cookie to uuid to session hash
-    user_id = await user_dao.create_user("temp first name", "temp last name", info.email, hashed_password, info.profile, info.nickname)
+    user_id = await user_dao.create_user(name=info.name, email=info.email, password=hashed_password)
     if (user_id is None):
          raise HTTPException(status_code=500, detail="Database error")
     cookie = str(uuid4())
@@ -82,20 +81,20 @@ async def login(
 
     if (uuid is not None):
         user = await user_dao.get_user(uuid)
-        nickname = user.nickname
+        name = user.name
 
         # Creates cookie and adds cookie to uuid hash
         cookie = str(uuid4())
         response.set_cookie(key="Cookie", value=cookie)    
         hash = request.app.state.session_hash
         hash[cookie] = uuid
-        user = await user_dao.get_user(uuid)
+        #user = await user_dao.get_user(uuid) unused?
         session_ids = await session_dao.get_session_ids(uuid)
         sessions = []
         for sid in session_ids:
              sessions.append({"session_id": sid[0], "session_name": sid[1]})
 
-        return {"user_id": cookie, "nickname": nickname, "sessions": sessions}
+        return {"user_id": cookie, "nickname": name, "sessions": sessions}
     else:
         return {"user_id": "None", "nickname": None, "sessions": None}
 

@@ -4,7 +4,7 @@ import { Input } from '../buttons/Input';
 import { YesOrNoButton } from '../buttons/YesOrNoButton';
 
 // add in onBackToChat when implement guest state
-export function LoginView({ onLoginSuccess}) {
+export function LoginView({ onLoginSuccess }) {
 
     // initial message from agent
     const [messages, setMessages] = useState(() => [
@@ -240,7 +240,8 @@ export function LoginView({ onLoginSuccess}) {
                 }
 
                 setUserId(newUserId);
-                onLoginSuccess(newUserId);
+                // no sessions yet for a new user
+                onLoginSuccess(newUserId, []);
                 setPassword(trimmedInput);
                 await agentMsg(`Ok :D I have all the info I need now. It was a pleasure to meet you ${username}!`);
                 console.log("-----------------completed signup---------------------");
@@ -254,33 +255,33 @@ export function LoginView({ onLoginSuccess}) {
             // need to set check after 5 login attempts -> lock user out? and bring back to start(?)
             // CURRENTLY -> will just bring user back to the starting status
             if (loginOrSignup === 'login') {
-                const userExists = await verifyEmail(email);
-                let newUserId = null;
-                if (userExists === 'True') {
-                    newUserId = await loginToAccount(trimmedInput);
-                }
-
-                if (!newUserId) {
-                    setShowPassword(false);
-                    await agentMsg("Hey, I think you entered the wrong password, or your account doesn't exist. Please try again!");
-                    setPasswordAttempts(passwordAttempts + 1);
-
-                    // attempt password >= 5 times -> send back to og state
-                    if (passwordAttempts + 1 >= 5) {
-                        // TODO !!!
-                        // DISABLE USER
-                        await agentMsg("you have tried too many times, disabling and bringing you back to the start now");
-                        await waitOneSecond();
-                        await resetAllFields();
-                        // await printAllFields();
-                        await agentMsg("Hi! I'm Sam :) Would you like to login or signup?");
-
-                    }
+                console.log("please");
+                
+                // attempt password >= 5 times -> send back to og state
+                if (passwordAttempts + 1 >= 5) {
+                    // TODO !!!
+                    // DISABLE USER
+                    await agentMsg("you have tried too many times, disabling and bringing you back to the start now");
+                    await waitOneSecond();
+                    await resetAllFields();
+                    // await printAllFields();
+                    await agentMsg("Hi! I'm Sam :) Would you like to login or signup?");
                     return;
                 }
 
-                setUserId(newUserId);
-                onLoginSuccess(newUserId);
+                // check if this is null???
+                let newUserId = await loginToAccount(trimmedInput);
+                console.log(newUserId);
+
+                if (!newUserId || !newUserId.user_id) {
+                    setShowPassword(false);
+                    await agentMsg("Hey, I think you entered the wrong password, or your account doesn't exist. Please try again!");
+                    setPasswordAttempts(passwordAttempts + 1);
+                    return;
+                }
+
+                setUserId(newUserId.user_id);
+                onLoginSuccess(newUserId.user_id, newUserId.sessions);
                 setPassword(trimmedInput);
                 await agentMsg("Ok :D I have all the info I need now. You are all logged in now!");
                 console.log("-----------------completed login---------------------");
@@ -407,26 +408,6 @@ export function LoginView({ onLoginSuccess}) {
     };
 
     const isWaitingForConfirmation = status === 'confirmName' || status === 'confirmEmail';
-
-    const verifyEmail = async(email) => {
-        try {
-            const verifyEmailResponse = await fetch(`${BASE}/login/verify_email`, {
-                method: 'POST',
-                credentials: 'include', 
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email }),
-            });
-            const isVerifiedEmail = await verifyEmailResponse.json();
-            return isVerifiedEmail.verified;
-        }
-
-        catch (error) {
-            console.log(error);
-            console.log("error in verifying email");
-            return null;
-
-        }
-    };
     
     // AKA verifying your password
     const loginToAccount = async(password) => {
@@ -438,7 +419,7 @@ export function LoginView({ onLoginSuccess}) {
                 method: 'POST',
                 credentials: 'include',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify( {email, password, cookie: ''} ),
+                body: JSON.stringify( {email, password} ),
             });
 
             if (!loginResponse.ok) {
@@ -451,7 +432,7 @@ export function LoginView({ onLoginSuccess}) {
                 return null;
             }
             
-            return isLoggedIn.user_id;
+            return isLoggedIn;
         }
         
         catch (error) {
@@ -467,7 +448,7 @@ export function LoginView({ onLoginSuccess}) {
                 method: 'POST',
                 credentials: 'include',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ first_name: name, last_name: '', nickname: name, profile: '', email, password }),
+                body: JSON.stringify({ name, email, password }),
             });
             const createdAccount =  await createAccountResponse.json();
             return createdAccount.user_id;

@@ -3,6 +3,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     app_name: str = "SAM"
+    hf_token: str = ""
+    openai_api_key: str = ""
+    decision_model: str = "gpt-6-luna"
     postgres_user: str | None = None
     database_url: str | None = None
     cors_origins: list[str] = [
