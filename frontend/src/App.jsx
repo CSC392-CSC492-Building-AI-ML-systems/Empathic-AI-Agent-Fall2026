@@ -149,6 +149,7 @@ function App() {
 	// save curr session to sessions if there are messages
 	// brings back to og state
 	const handleNewChat = () => {
+		// remove save current session if no use
 		saveCurrentSession();
     	setActiveTab('chat');
     	setMessages([]);
@@ -283,7 +284,9 @@ function App() {
 
 	const handleOpenPastChats = () => {
 		// save current session
-		saveCurrentSession();
+		// saveCurrentSession();
+		// get all session when im about to open all the past chats
+		getAllSessions();
 		setActiveTab('past_chats');
 	};
 
@@ -325,6 +328,7 @@ function App() {
     };
 
 	const saveCurrentSession = () => {
+		{/*
 		// save if there's an active session and some messages
 		if (!sessionId || messages.length === 0) return;
 
@@ -350,6 +354,30 @@ function App() {
 				{ session_id: sessionId, session_name: sessionName },
 				...prev
 			]);
+		}
+		*/}
+		return;
+	};
+
+	// retrieve all the sessions from the backend
+	const getAllSessions = async () => {
+		try {
+			const sessionsResponse = await fetch(`${BASE}/session/get_sessions`, {
+				method: 'GET',
+				credentials: 'include',
+			});
+
+			if (!sessionsResponse.ok) {
+				console.log("failed to retrieve all sessions");
+				return;
+			}
+
+			const allSessions = await sessionsResponse.json();
+			setSessions(allSessions.sessions);
+		}
+		catch (error) {
+			console.log(error);
+			console.log("error in retrieving all sessions");
 		}
 	};
 

@@ -257,25 +257,26 @@ export function LoginView({ onLoginSuccess }) {
             if (loginOrSignup === 'login') {
                 console.log("please");
                 
+                // attempt password >= 5 times -> send back to og state
+                if (passwordAttempts + 1 >= 5) {
+                    // TODO !!!
+                    // DISABLE USER
+                    await agentMsg("you have tried too many times, disabling and bringing you back to the start now");
+                    await waitOneSecond();
+                    await resetAllFields();
+                    // await printAllFields();
+                    await agentMsg("Hi! I'm Sam :) Would you like to login or signup?");
+                    return;
+                }
+
+                // check if this is null???
                 let newUserId = await loginToAccount(trimmedInput);
                 console.log(newUserId);
 
-                if (!newUserId.user_id) {
+                if (!newUserId || !newUserId.user_id) {
                     setShowPassword(false);
                     await agentMsg("Hey, I think you entered the wrong password, or your account doesn't exist. Please try again!");
                     setPasswordAttempts(passwordAttempts + 1);
-
-                    // attempt password >= 5 times -> send back to og state
-                    if (passwordAttempts + 1 >= 5) {
-                        // TODO !!!
-                        // DISABLE USER
-                        await agentMsg("you have tried too many times, disabling and bringing you back to the start now");
-                        await waitOneSecond();
-                        await resetAllFields();
-                        // await printAllFields();
-                        await agentMsg("Hi! I'm Sam :) Would you like to login or signup?");
-
-                    }
                     return;
                 }
 
@@ -407,26 +408,6 @@ export function LoginView({ onLoginSuccess }) {
     };
 
     const isWaitingForConfirmation = status === 'confirmName' || status === 'confirmEmail';
-
-    const verifyEmail = async(email) => {
-        try {
-            const verifyEmailResponse = await fetch(`${BASE}/login/verify_email`, {
-                method: 'POST',
-                credentials: 'include', 
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email }),
-            });
-            const isVerifiedEmail = await verifyEmailResponse.json();
-            return isVerifiedEmail.verified;
-        }
-
-        catch (error) {
-            console.log(error);
-            console.log("error in verifying email");
-            return null;
-
-        }
-    };
     
     // AKA verifying your password
     const loginToAccount = async(password) => {
