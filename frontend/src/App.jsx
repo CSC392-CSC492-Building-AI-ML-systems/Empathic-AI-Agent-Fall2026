@@ -267,7 +267,7 @@ function App() {
 				text: pastChatHistory.content,
 				timestamp: pastChatHistory.created_at
 			}));
-
+			console.log("this is all past convo history", convoHistory);
 			setMessages(convoHistory);
 			setSessionId(chatSession.session_id);
 		}
@@ -323,7 +323,6 @@ function App() {
 			console.log("error in logging out");
 		}
     };
-
 
 	const saveCurrentSession = () => {
 		// save if there's an active session and some messages

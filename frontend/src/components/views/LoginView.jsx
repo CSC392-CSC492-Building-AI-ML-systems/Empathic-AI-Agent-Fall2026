@@ -255,11 +255,10 @@ export function LoginView({ onLoginSuccess }) {
             // need to set check after 5 login attempts -> lock user out? and bring back to start(?)
             // CURRENTLY -> will just bring user back to the starting status
             if (loginOrSignup === 'login') {
-                const userExists = await verifyEmail(email);
-                let newUserId = null;
-                if (userExists === 'True') {
-                    newUserId = await loginToAccount(trimmedInput);
-                }
+                console.log("please");
+                
+                let newUserId = await loginToAccount(trimmedInput);
+                console.log(newUserId);
 
                 if (!newUserId.user_id) {
                     setShowPassword(false);
@@ -468,7 +467,7 @@ export function LoginView({ onLoginSuccess }) {
                 method: 'POST',
                 credentials: 'include',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ first_name: name, last_name: '', nickname: name, profile: '', email, password }),
+                body: JSON.stringify({ name, email, password }),
             });
             const createdAccount =  await createAccountResponse.json();
             return createdAccount.user_id;
