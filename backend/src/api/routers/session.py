@@ -97,6 +97,7 @@ async def delete_session(
     request: Request,
     session_id: str
 ):
+    """ deletes the session with the given session id. """
     session_dao = request.app.state.session_dao
     hash = request.app.state.session_hash
 
@@ -107,6 +108,29 @@ async def delete_session(
 
     # deletes session from sessions
     await session_dao.del_session(session_id)
+
+@router.get("/get_sessions")
+async def get_session(
+    request: Request
+):
+    """returns a list of session id and names according to the cookie of a logged in user.
+       raises error if theres no valid user login."""
+    session_dao = request.app.state.session_dao
+    hash = request.app.state.session_hash
+    
+    # ensures valid user login before usage
+    cookie = request.cookies.get("Cookie")
+    if cookie not in hash: 
+        raise HTTPException(status_code=401, detail="Invalid or missing authentication cookie")
+    uuid = hash[cookie]
+
+    # gets session id and names
+    session_ids = await session_dao.get_session_ids(uuid)
+    sessions = []
+    for sid in session_ids:
+        sessions.append({"session_id": sid[0], "session_name": sid[1]})
+    
+    return {"sessions": sessions}
     
 async def get_session_name(msg: str) -> str:
     """returns a session name given an initial prompt."""

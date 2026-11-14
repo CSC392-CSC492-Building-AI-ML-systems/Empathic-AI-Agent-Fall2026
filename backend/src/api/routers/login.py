@@ -12,8 +12,7 @@ class login(BaseModel):
 class UserCreation(BaseModel):
     email: str
     password: str
-    # Accept the current frontend's nickname until it switches to name.
-    name: str = Field(validation_alias=AliasChoices("name", "nickname"))
+    name: str
 
 class email_prompt(BaseModel):
      email:str
