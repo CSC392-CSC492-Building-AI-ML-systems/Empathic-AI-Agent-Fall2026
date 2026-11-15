@@ -53,7 +53,10 @@ async def start_conversation_state(
         owner=owner,
         queue=request.app.state.job_queue,
         session_id=UUID(str(session_id)),
-        message=message.message)
+        message=message.message,
+        turn_count=0,
+        session=None,
+        decision=None)
     await request.app.state.job_queue.put(job)
     response = await owner
 
@@ -99,7 +102,10 @@ async def send_conversation_state(
         owner=owner,
         queue=request.app.state.job_queue,
         session_id=UUID(str(session_id)),
-        message=message.message)
+        message=message.message,
+        turn_count=0,
+        session=None,
+        decision=None)
     await request.app.state.job_queue.put(job)
     response = await owner
 
