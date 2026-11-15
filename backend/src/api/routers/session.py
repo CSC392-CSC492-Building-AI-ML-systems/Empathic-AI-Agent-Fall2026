@@ -1,11 +1,12 @@
+import asyncio
 import os
+from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Request, status
 from openrouter import OpenRouter
 from pydantic import BaseModel
 
-from ...agent import fine_tune as model
-from ...agent.job import Job
+from ...agent.jobs import GenericJob
 
 
 class Message(BaseModel): 
@@ -25,8 +26,6 @@ async def start_conversation_state(
 ):
     """starts a conversation with a message. Returns the agent's response and session id."""
     session_dao = request.app.state.session_dao
-    message_dao = request.app.state.message_dao
-    user_dao = request.app.state.user_dao
     s_hash = request.app.state.session_hash
 
     # ensures valid user login before usage
@@ -46,8 +45,17 @@ async def start_conversation_state(
                                                   tool_context="",
                                                   terminated=False)
 
-    job = Job(message.message, message_dao, session_dao, user_dao, session_id, 20)
-    response = await job.run()
+    owner = asyncio.get_running_loop().create_future()
+    job = GenericJob(
+        message_dao=request.app.state.message_dao,
+        session_dao=request.app.state.session_dao,
+        user_dao=request.app.state.user_dao,
+        owner=owner,
+        queue=request.app.state.job_queue,
+        session_id=UUID(str(session_id)),
+        message=message.message)
+    await request.app.state.job_queue.put(job)
+    response = await owner
 
     return {"session_id": session_id, "response": response}
 
@@ -76,9 +84,6 @@ async def send_conversation_state(
     message: Message
 ):
     """sends a message to session with {session_id}. Returns the agent's response."""
-    message_dao = request.app.state.message_dao
-    session_dao = request.app.state.session_dao
-    user_dao = request.app.state.user_dao
     s_hash = request.app.state.session_hash
 
     # ensures valid user login before usage
@@ -86,8 +91,17 @@ async def send_conversation_state(
     if cookie not in s_hash:
         raise HTTPException(status_code=401, detail="Invalid or missing authentication cookie")
 
-    job = Job(message.message, message_dao, session_dao, user_dao, session_id, 20)
-    response = await job.run()
+    owner = asyncio.get_running_loop().create_future()
+    job = GenericJob(
+        message_dao=request.app.state.message_dao,
+        session_dao=request.app.state.session_dao,
+        user_dao=request.app.state.user_dao,
+        owner=owner,
+        queue=request.app.state.job_queue,
+        session_id=UUID(str(session_id)),
+        message=message.message)
+    await request.app.state.job_queue.put(job)
+    response = await owner
 
     # respond
     return {"response": response}
