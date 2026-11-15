@@ -56,28 +56,30 @@ def parse(raw: str) -> Decision:
 class GenericJob:
 
     # Database access
-    message_dao: MessageDao | None
-    session_dao: SessionDao | None
-    user_dao: UserDao | None
+    message_dao: MessageDao
+    session_dao: SessionDao
+    user_dao: UserDao
 
-    owner: asyncio.Future[str] | None
-    queue: asyncio.Queue | None
+    owner: asyncio.Future[str]
+    queue: asyncio.Queue
     turn_count: int
     session: Session | None
-    session_id: UUID | None
-    progress_msg: str | None = "..."
+    session_id: UUID
+    progress_msg: str
     decision: Decision | None
-    message: str | None
+    message: str
 
     def __init__(self,
-                 message_dao: MessageDao | None = None,
-                 session_dao: SessionDao | None = None,
-                 user_dao: UserDao | None = None,
-                 owner: asyncio.Future[str] | None = None,
-                 queue: asyncio.Queue | None = None,
-                 session: Session | None = None,
-                 session_id: UUID | None = None,
-                 message: str | None = None):
+                 message_dao: MessageDao,
+                 session_dao: SessionDao,
+                 user_dao: UserDao,
+                 owner: asyncio.Future[str],
+                 queue: asyncio.Queue,
+                 turn_count: int,
+                 session_id: UUID,
+                 message: str,
+                 session: Session | None,
+                 decision: Decision | None):
 
         self.message_dao = message_dao
         self.session_dao = session_dao
@@ -87,21 +89,10 @@ class GenericJob:
         self.session = session
         self.session_id = session_id
         self.message = message
-        self.decision: Decision | None = None
-        self.turn_count = 0
+        self.decision = decision
+        self.turn_count = turn_count
 
-
-    def _gather(self, other):
-        self.message_dao = other.message_dao
-        self.session_dao = other.session_dao
-        self.user_dao = other.user_dao
-        self.owner = other.owner
-        self.queue = other.queue
-        self.session = other.session
-        self.session_id = other.session_id
-        self.turn_count = other.turn_count + 1
-
-    def _finish(self, response: str):
+    def _finish(self, response: str = ""):
         self.owner.set_result(response)
         # change later to allow for progress update?
 
@@ -115,24 +106,63 @@ class GenericJob:
 
     async def _decide(self):
 
-        job = ResponseJob()
+        if not self.session:
+            self._finish("AGENT-ERROR")
+            return
+
+        if self.session.terminated:
+            self._finish("This session has been terminated.")
+            return
+
+        job = None
 
         if self.turn_count < TURN_LIMIT:
             memories = await self.user_dao.get_memories(self.session.user_id)
             raw = await model_decide(self.session, memories)
             decision = parse(raw)
 
+            if decision.call == "RESPOND":
+                job = ResponseJob(message_dao=self.message_dao,
+                                  session_dao=self.session_dao,
+                                  user_dao=self.user_dao,
+                                  owner=self.owner,
+                                  queue=self.queue,
+                                  turn_count=self.turn_count + 1,
+                                  session=self.session,
+                                  session_id=self.session_id,
+                                  message=self.message,
+                                  decision=self.decision)
             if decision.call == "SAVE-TO-MEMORY":
-                job = UpdateMemoryJob()
+                job = UpdateMemoryJob(message_dao=self.message_dao,
+                                      session_dao=self.session_dao,
+                                      user_dao=self.user_dao,
+                                      owner=self.owner,
+                                      queue=self.queue,
+                                      turn_count=self.turn_count + 1,
+                                      session=self.session,
+                                      session_id=self.session_id,
+                                      message=self.message,
+                                      decision=self.decision)
             elif decision.call == "TERMINATE-SESSION":
-                job = TerminateSessionJob()
+                job = TerminateSessionJob(message_dao=self.message_dao,
+                                          session_dao=self.session_dao,
+                                          user_dao=self.user_dao,
+                                          owner=self.owner,
+                                          queue=self.queue,
+                                          turn_count=self.turn_count + 1,
+                                          session=self.session,
+                                          session_id=self.session_id,
+                                          message=self.message,
+                                          decision=self.decision)
+
+            if job is None:
+                self._finish("AGENT-ERROR")
+                return
 
             job.decision = decision
             if decision.is_tool_call:
                 await self.message_dao.add_message("tool", decision.raw, self.session_id)
 
-        # Copies necessary values from this job to the next job
-        job._gather(self)
         await self.queue.put(job)
 
     async def run(self):
@@ -146,6 +176,11 @@ class ResponseJob(GenericJob):
     progress_msg = None
 
     async def run(self):
+
+        if not self.session:
+            self._finish("AGENT-ERROR")
+            return
+
         memories = await self.user_dao.get_memories(self.session.user_id)
         response = await send_model(self.session, memories)
         await self.message_dao.add_message("assistant", response, self.session_id)
@@ -158,6 +193,11 @@ class UpdateMemoryJob(GenericJob):
     progress_msg = "Updating Memory..."
 
     async def run(self):
+
+        if not self.decision or not self.decision.memory_key:
+            self._finish("AGENT-ERROR")
+            return
+
         await self.user_dao.upsert_memory(self.session.user_id,
                                           self.decision.memory_key,
                                           self.decision.content)
