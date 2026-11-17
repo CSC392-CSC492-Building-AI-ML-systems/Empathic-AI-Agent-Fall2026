@@ -131,7 +131,7 @@ class GenericJob:
                                   session=self.session,
                                   session_id=self.session_id,
                                   message=self.message,
-                                  decision=self.decision)
+                                  decision=decision)
             if decision.call == "SAVE-TO-MEMORY":
                 job = UpdateMemoryJob(message_dao=self.message_dao,
                                       session_dao=self.session_dao,
@@ -142,7 +142,7 @@ class GenericJob:
                                       session=self.session,
                                       session_id=self.session_id,
                                       message=self.message,
-                                      decision=self.decision)
+                                      decision=decision)
             elif decision.call == "TERMINATE-SESSION":
                 job = TerminateSessionJob(message_dao=self.message_dao,
                                           session_dao=self.session_dao,
@@ -153,13 +153,12 @@ class GenericJob:
                                           session=self.session,
                                           session_id=self.session_id,
                                           message=self.message,
-                                          decision=self.decision)
+                                          decision=decision)
 
             if job is None:
                 self._finish("AGENT-ERROR")
                 return
 
-            job.decision = decision
             if decision.is_tool_call:
                 await self.message_dao.add_message("tool", decision.raw, self.session_id)
 

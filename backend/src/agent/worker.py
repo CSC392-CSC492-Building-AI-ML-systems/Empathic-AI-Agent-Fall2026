@@ -14,6 +14,11 @@ class Worker:
 
         while True:
             job = await self.queue.get()
-            #job.send_progress_update()
-            await job.run()
-            self.queue.task_done()
+            try:
+                #await job.send_progress_update()
+                await job.run()
+            except Exception as error:
+                logger.exception("Worker failed to process a job")
+                job.owner.set_exception(error)
+            finally:
+                self.queue.task_done()
