@@ -7,6 +7,8 @@ import { ChatThread } from './components/chat/ChatThread';
 import { PastChatsView } from './components/views/PastChatsView';
 import { LoginView } from './components/views/LoginView';
 import { SettingsView } from './components/views/SettingsView';
+import { supabase } from './lib/supabaseClient';
+import { AuthCallback } from './components/views/AuthCallback';
 import './App.css';
 
 function App() {
@@ -15,6 +17,7 @@ function App() {
 	const [messages, setMessages] = useState([]);
 	const [inputVal, setInputVal] = useState('');
 	const [sessionId, setSessionId] = useState(null);
+	const [sessions, setSessions] = useState([]);
 	// IF IMPLEMENT GUEST STATE
 	// const sessionFetched = useRef(false);
 
@@ -25,7 +28,23 @@ function App() {
 	// userId = null -> not logged in
 	const [userId, setUserId] = useState(null);
 
+	// for authentication
+	const isAuthCallback = window.location.pathname === '/auth/callback';
+
 	const BASE = "http://localhost:8000";
+
+	// Get the current Supabase access token and prepare request headers
+	const getAuthHeaders = async () => {
+		const { data, error } = await supabase.auth.getSession();
+
+		if (error || !data.session) {
+			throw new Error('No authenticated Supabase session');
+		}
+
+		return {'Content-Type': 'application/json',
+			'Authorization': `Bearer ${data.session.access_token}`,
+		};
+	};
 
 	// starting a session with the backend
 	// occurs AFTER sending one message
@@ -40,8 +59,7 @@ function App() {
 		try {
 			const startSessionResponse = await fetch(`${BASE}/session/`, {
 				method: 'POST', 
-				credentials: 'include',
-				headers: { 'Content-Type': 'application/json' },
+				headers: await getAuthHeaders(),
 				body: JSON.stringify({ message: payload.text }),
 
 			});
@@ -98,10 +116,7 @@ function App() {
 		try {
 			const response = await fetch(`${BASE}/session/${sessionId}/message`, {
 				method: 'POST',
-				credentials: 'include',
-				headers: {
-					'Content-Type': 'application/json',
-				},
+				headers: await getAuthHeaders(),
 				body: JSON.stringify({ message: payload.text }),
 			});
 
@@ -228,58 +243,188 @@ function App() {
       	: 'chat_active';
 
 	// showing the temp past chats
-	const handleSelectPastChat = (chat) => {
-		setMessages(chat.messages);
-		setSessionId(chat.sessionId);
-		setActiveTab('chat');
-	};
-
-	const handleLogout = async () => {
-        try {
-			const logoutResponse = await fetch(`${BASE}/login/logout`, {
-				method: 'GET',
-				credentials: 'include',
+	const handleSelectPastChat = async (chatSession) => {
+		// get the actual chat from the backend
+		try {
+			const pastChatResponse = await fetch(`${BASE}/session/${chatSession.session_id}`, {
+				method: 'POST',
+				headers: getAuthHeaders(),
 			});
 
-
-			const loggedOut = await logoutResponse.json();
-			// DEBUGGING ONLY 
-			console.log("am i able to logout...???", loggedOut.logout);
-
-			// successfully logging out clear all msgs and session id and user id
-			// bring user back to the logout state
-			if (loggedOut.logout === 'successful') {
-				setUserId(null);
-				setMessages([]);
-				setSessionId(null);
-				setActiveTab('login');
-
-				// DEBUGGING ONLY
-				console.log("logging out userid: ", userId);
-				console.log("logging out sessionid: ", sessionId);
-				console.log("successfully logged out :D");
+			if (!pastChatResponse.ok) {
+				console.log("failed to load convo history");
 				return;
 			}
 
-			// failed to logout idk what we should do yet
-			console.log("erm could not logout successfully.....oopsies");
+			// response from backend is list of all convo history
+			// each past chat history has role, content, created_at
+			const pastChats = await pastChatResponse.json();
+			// populate convo history so we can set into msgs
 			
+			const convoHistory = pastChats.map((pastChatHistory) => ({
+				id: crypto.randomUUID(),
+				sender: pastChatHistory.role === 'assistant' ? 'sam' : 'user',
+				text: pastChatHistory.content,
+				timestamp: pastChatHistory.created_at
+			}));
+			console.log("this is all past convo history", convoHistory);
+			setMessages(convoHistory);
+			setSessionId(chatSession.session_id);
+		}
+		
+		catch (error) {
+			console.log(error);
+			console.log("error in retrieving past chat with a session");
+		}
+
+		
+		setActiveTab('chat');
+	};
+
+	const handleOpenPastChats = () => {
+		// save current session
+		// saveCurrentSession();
+		// get all session when im about to open all the past chats
+		getAllSessions();
+		setActiveTab('past_chats');
+	};
+
+	// const handleLogout = async () => {
+    //     try {
+	// 		const logoutResponse = await fetch(`${BASE}/login/logout`, {
+	// 			method: 'GET',
+	// 			credentials: 'include',
+	// 		});
+
+
+	// 		const loggedOut = await logoutResponse.json();
+	// 		// DEBUGGING ONLY 
+	// 		console.log("am i able to logout...???", loggedOut.logout);
+
+	// 		// successfully logging out clear all msgs and session id and user id
+	// 		// bring user back to the logout state
+	// 		if (loggedOut.logout === 'successful') {
+	// 			setUserId(null);
+	// 			setMessages([]);
+	// 			setSessionId(null);
+	// 			setActiveTab('login');
+
+	// 			// DEBUGGING ONLY
+	// 			console.log("logging out userid: ", userId);
+	// 			console.log("logging out sessionid: ", sessionId);
+	// 			console.log("successfully logged out :D");
+	// 			return;
+	// 		}
+
+	// 		// failed to logout idk what we should do yet
+	// 		console.log("erm could not logout successfully.....oopsies");
+			
+	// 	}
+	// 	catch (error) {
+	// 		console.log(error);
+	// 		console.log("error in logging out");
+	// 	}
+    // };
+	const handleLogout = async () => {
+		try {
+			const { error } = await supabase.auth.signOut();
+
+			if (error) {
+				console.error('Logout failed:', error);
+				return;
+			}
+
+			// Clear frontend state
+			setUserId(null);
+			setMessages([]);
+			setSessionId(null);
+			setSessions([]);
+			setInputVal('');
+			setActiveTab('login');
+
+			console.log('Successfully logged out!');
+		}
+		catch (error) {
+			console.error('Error logging out:', error);
+		}
+	};
+
+	const saveCurrentSession = () => {
+		{/*
+		// save if there's an active session and some messages
+		if (!sessionId || messages.length === 0) return;
+
+		// check if this session is already in the sessions list
+		const existingIndex = sessions.findIndex(s => s.session_id === sessionId);
+
+		// create temp session name
+		// replace with calling backend to generate a session name
+		const sessionName = "temp";
+
+		if (existingIndex >= 0) {
+			// Update existing session in state if needed
+			const updatedSessions = [...sessions];
+			updatedSessions[existingIndex] = {
+				session_id: sessionId,
+				session_name: sessionName
+			};
+			setSessions(updatedSessions);
+		} 
+		else {
+			// Append new session to the top/bottom of the array
+			setSessions(prev => [
+				{ session_id: sessionId, session_name: sessionName },
+				...prev
+			]);
+		}
+		*/}
+		return;
+	};
+
+	// retrieve all the sessions from the backend
+	const getAllSessions = async () => {
+		try {
+			const sessionsResponse = await fetch(`${BASE}/session/get_sessions`, {
+				method: 'GET',
+				headers: await getAuthHeaders(),
+			});
+
+			if (!sessionsResponse.ok) {
+				console.log("failed to retrieve all sessions");
+				return;
+			}
+
+			const allSessions = await sessionsResponse.json();
+			setSessions(allSessions.sessions);
 		}
 		catch (error) {
 			console.log(error);
-			console.log("error in logging out");
+			console.log("error in retrieving all sessions");
 		}
     };
 
   	return (
     	<div className="flex h-screen w-full bg-[#f6f7f5] text-gray-800 font-sans">
 
-			{activeTab === 'login' ? (
+			{isAuthCallback ? (
+				<AuthCallback
+					onLoginSuccess={(loginId, loginSessions) => {
+						setUserId(loginId);
+						setSessions(loginSessions);
+						window.history.replaceState({}, '', '/');
+						setActiveTab('chat');
+					}}
+				/>
+
+			) : activeTab === 'login' ? (
 				<LoginView
 					onBackToChat={() => setActiveTab('chat')}
-					onLoginSuccess={(id) => {
-						setUserId(id);
-						console.log(`this is the userId: ${id}`);
+					onLoginSuccess={(loginId, loginSessions) => {
+						setUserId(loginId);
+						// used for retrieving past chats
+						setSessions(loginSessions);
+						console.log(`this is the userId: ${loginId}`);
+						console.log(`these are all the sessions associated with this user: ${loginSessions}`);
 						setTimeout(() => setActiveTab('chat'), 2000);
 					}}
 				/>

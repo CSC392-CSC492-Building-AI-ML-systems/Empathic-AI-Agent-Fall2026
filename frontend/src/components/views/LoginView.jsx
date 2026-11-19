@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ChatThread } from '../chat/ChatThread';
 import { Input } from '../buttons/Input';
+import { supabase } from '../../lib/supabaseClient';
 import { YesOrNoButton } from '../buttons/YesOrNoButton';
 
 // add in onBackToChat when implement guest state
@@ -232,56 +233,91 @@ export function LoginView({ onLoginSuccess}) {
                 setShowPassword(false);
 
                 
-                const newUserId = await createAccount(username, email, trimmedInput);
+                // const newUserId = await createAccount(username, email, trimmedInput);
 
-                if (!newUserId) {
+                // if (!newUserId) {
+                //     await agentMsg("Hmm, something went wrong creating your account. Please try a different password or try again later.");
+                //     return;
+                // }
+
+                // setUserId(newUserId);
+                // // no sessions yet for a new user
+                // onLoginSuccess(newUserId, []);
+                // setPassword(trimmedInput);
+
+                const signupData = await createAccount(username, email, trimmedInput);
+
+                if (!signupData || !signupData.user) {
                     await agentMsg("Hmm, something went wrong creating your account. Please try a different password or try again later.");
                     return;
                 }
 
+                if (!signupData.session){
+                    await agentMsg("I've sent you a verification email! Please check your inbox and click the link to finish creating your account.");
+                    setStatus('awaitingVerification'); // idk what this does lowkey
+                    return; //idk why this either lowkey
+                }
+                
+                const newUserId = signupData.user.id;
+
                 setUserId(newUserId);
-                onLoginSuccess(newUserId);
-                setPassword(trimmedInput);
+                onLoginSuccess(newUserId, []);
+                // password is handled by supabase now
+                
                 await agentMsg(`Ok :D I have all the info I need now. It was a pleasure to meet you ${username}!`);
                 console.log("-----------------completed signup---------------------");
                 printAllFields();
                 console.log("-----------------------------------------------------");
                 setStatus('done');
                 return;
+
             }
 
             // ---------- LOGIN ----------
             // need to set check after 5 login attempts -> lock user out? and bring back to start(?)
             // CURRENTLY -> will just bring user back to the starting status
             if (loginOrSignup === 'login') {
-                const userExists = await verifyEmail(email);
-                let newUserId = null;
-                if (userExists === 'True') {
-                    newUserId = await loginToAccount(trimmedInput);
-                }
-
-                if (!newUserId) {
-                    setShowPassword(false);
-                    await agentMsg("Hey, I think you entered the wrong password, or your account doesn't exist. Please try again!");
-                    setPasswordAttempts(passwordAttempts + 1);
-
-                    // attempt password >= 5 times -> send back to og state
-                    if (passwordAttempts + 1 >= 5) {
-                        // TODO !!!
-                        // DISABLE USER
-                        await agentMsg("you have tried too many times, disabling and bringing you back to the start now");
-                        await waitOneSecond();
-                        await resetAllFields();
-                        // await printAllFields();
-                        await agentMsg("Hi! I'm Sam :) Would you like to login or signup?");
-
-                    }
+                console.log("please");
+                
+                // attempt password >= 5 times -> send back to og state
+                if (passwordAttempts + 1 >= 5) {
+                    // TODO !!!
+                    // DISABLE USER
+                    await agentMsg("you have tried too many times, disabling and bringing you back to the start now");
+                    await waitOneSecond();
+                    await resetAllFields();
+                    // await printAllFields();
+                    await agentMsg("Hi! I'm Sam :) Would you like to login or signup?");
                     return;
                 }
 
-                setUserId(newUserId);
-                onLoginSuccess(newUserId);
-                setPassword(trimmedInput);
+                // check if this is null???
+                // let newUserId = await loginToAccount(trimmedInput);
+                // console.log(newUserId);
+
+                // if (!newUserId || !newUserId.user_id) {
+                //     setShowPassword(false);
+                //     await agentMsg("Hey, I think you entered the wrong password, or your account doesn't exist. Please try again!");
+                //     setPasswordAttempts(passwordAttempts + 1);
+                //     return;
+                // }
+
+                // setUserId(newUserId.user_id);
+                // onLoginSuccess(newUserId.user_id, newUserId.sessions);
+                // setPassword(trimmedInput);
+
+                const loginData = await loginToAccount(trimmedInput);
+                if (!loginData || !loginData.user || !loginData.session){
+                    setShowPassword(false);
+                    await agentMsg("Hey, I think you entered the wrong password, or your account doesn't exist. Please try again!");
+                    setPasswordAttempts(passwordAttempts + 1);
+                    return;
+                }
+
+                const userId = loginData.user.id;
+                setUserId(userId);
+                onLoginSuccess(userId, []);
+
                 await agentMsg("Ok :D I have all the info I need now. You are all logged in now!");
                 console.log("-----------------completed login---------------------");
                 printAllFields();
@@ -433,48 +469,87 @@ export function LoginView({ onLoginSuccess}) {
         // logging in is essentially also just verifying your password
         // on success -> receive uuid from backend
         // on fail -> uuid = None
-        try {
-            const loginResponse = await fetch(`${BASE}/login/`, {
-                method: 'POST',
-                credentials: 'include',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify( {email, password, cookie: ''} ),
-            });
+        // try {
+        //     const loginResponse = await fetch(`${BASE}/login/`, {
+        //         method: 'POST',
+        //         credentials: 'include',
+        //         headers: {'Content-Type': 'application/json'},
+        //         body: JSON.stringify( {email, password} ),
+        //     });
 
-            if (!loginResponse.ok) {
-                return null;
-            } 
+        //     if (!loginResponse.ok) {
+        //         return null;
+        //     } 
             
-            const isLoggedIn = await loginResponse.json();
+        //     const isLoggedIn = await loginResponse.json();
 
-            if (!isLoggedIn.user_id || isLoggedIn.user_id === 'None') {
+        //     if (!isLoggedIn.user_id || isLoggedIn.user_id === 'None') {
+        //         return null;
+        //     }
+            
+        //     return isLoggedIn;
+        // }
+        
+        // catch (error) {
+        //     console.log(error);
+        //     console.log("error in logging in - email and password dont match");
+        //     return null;
+        // }
+         try {
+            const { data, error } =
+                await supabase.auth.signInWithPassword({
+                    email,
+                    password
+                });
+
+            if (error) {
+                console.error("Login error:", error.message);
                 return null;
             }
-            
-            return isLoggedIn.user_id;
+
+            return data;
         }
-        
         catch (error) {
-            console.log(error);
-            console.log("error in logging in - email and password dont match");
+            console.error("Error logging in:", error);
             return null;
         }
     };
 
     const createAccount = async(name, email, password) => {
+        // try {
+        //     const createAccountResponse = await fetch(`${BASE}/login/create_account`, {
+        //         method: 'POST',
+        //         credentials: 'include',
+        //         headers: {'Content-Type': 'application/json'},
+        //         body: JSON.stringify({ name, email, password }),
+        //     });
+        //     const createdAccount =  await createAccountResponse.json();
+        //     return createdAccount.user_id;
+        // }
+        // catch (error) {
+        //     console.log(error);
+        //     console.log("error in creating an account:(((((");
+        //     return null;
+        // }
         try {
-            const createAccountResponse = await fetch(`${BASE}/login/create_account`, {
-                method: 'POST',
-                credentials: 'include',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ first_name: name, last_name: '', nickname: name, profile: '', email, password }),
+            const { data, error } = await supabase.auth.signUp({
+                email,
+                password,
+                options: {
+                    data: { name },
+                    emailRedirectTo: "http://localhost:5173/auth/callback"
+                }
             });
-            const createdAccount =  await createAccountResponse.json();
-            return createdAccount.user_id;
+
+            if (error) {
+                console.error("error in creating an account:((((( ", error.message);
+                return null;
+            }
+
+            return data;
         }
         catch (error) {
-            console.log(error);
-            console.log("error in creating an account:(((((");
+            console.error("Error creating account:", error);
             return null;
         }
     };
@@ -528,7 +603,11 @@ export function LoginView({ onLoginSuccess}) {
                             onNo={handleConfirmNo} 
                             disabled={isTyping}
                             />
-                        ) : status === 'done' ? (
+                        ) : status === 'awaitingVerification' ? ( // lets see how this looks huh lol
+                            <p className="text-center text-sm text-gray-500">
+                                Please verify your email to continue!
+                            </p>
+                        ): status === 'done' ? (
                             <p className="text-center text-sm text-gray-500">Completed Login</p>
                         ) : (
                             <div className="relative flex items-center w-full">

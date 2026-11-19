@@ -8,6 +8,9 @@ class Settings(BaseSettings):
     decision_model: str = "gpt-6-luna"
     postgres_user: str | None = None
     database_url: str | None = None
+    supabase_url: str
+    supabase_publishable_key: str
+
     cors_origins: list[str] = [
         "http://localhost",
         "http://localhost:8080",
