@@ -160,8 +160,11 @@ function App() {
 	};
 
 	// new chat resetting everything
+	// save curr session to sessions if there are messages
 	// brings back to og state
 	const handleNewChat = () => {
+		// remove save current session if no use
+		saveCurrentSession();
     	setActiveTab('chat');
     	setMessages([]);
     	setInputVal('');
@@ -216,6 +219,15 @@ function App() {
 			waitOneSecond()
 		]);
 
+		// TODO
+		// check if agentResponse indicates we should create a popup
+		// yes -> save to sessions and open new chat
+		// no -> stay in current chat
+
+		// TODO
+		// check if agentResponse indicates we should terminate the session
+		// what should i do
+
 		// will need to get response from backend
 		// display agent response
 		const agentMsg = { 
@@ -225,7 +237,7 @@ function App() {
 			text: agentResponse ?? "Sorry, can you repeat what you said one more time?",
 			timestamp: new Date().toISOString()
 		};
-
+		console.log("THIS IS MY CURR SESSID: ", sessionId);
 		setMessages((prev) => [...prev, agentMsg]);
 		setIsTyping(false);
 		
@@ -248,7 +260,7 @@ function App() {
 		try {
 			const pastChatResponse = await fetch(`${BASE}/session/${chatSession.session_id}`, {
 				method: 'POST',
-				headers: getAuthHeaders(),
+				headers: await getAuthHeaders(),
 			});
 
 			if (!pastChatResponse.ok) {
@@ -280,6 +292,7 @@ function App() {
 		
 		setActiveTab('chat');
 	};
+
 
 	const handleOpenPastChats = () => {
 		// save current session
@@ -399,9 +412,10 @@ function App() {
 		}
 		catch (error) {
 			console.log(error);
-			console.log("error in retrieving all sessions");
+			console.log("error in logging out");
 		}
     };
+
 
   	return (
     	<div className="flex h-screen w-full bg-[#f6f7f5] text-gray-800 font-sans">
@@ -433,7 +447,7 @@ function App() {
 					<Sidebar
 						activeTab={sidebarTabState}
 						onNewChat={handleNewChat}
-						onOpenPastChats={() => setActiveTab('past_chats')}
+						onOpenPastChats={handleOpenPastChats}
 						// onOpenLogin={() => setActiveTab('login')}
 						onOpenSettings={() => setActiveTab('settings')}
 						isLoggedIn={Boolean(userId)}
@@ -444,6 +458,7 @@ function App() {
 						{activeTab === 'past_chats' ? (
 							<PastChatsView 
 								onSelectChat={handleSelectPastChat} 
+								sessions={sessions}
 							/>
 						) : activeTab === 'settings' ? (
 							<SettingsView 

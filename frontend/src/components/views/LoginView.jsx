@@ -5,7 +5,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { YesOrNoButton } from '../buttons/YesOrNoButton';
 
 // add in onBackToChat when implement guest state
-export function LoginView({ onLoginSuccess}) {
+export function LoginView({ onLoginSuccess }) {
 
     // initial message from agent
     const [messages, setMessages] = useState(() => [
@@ -443,26 +443,6 @@ export function LoginView({ onLoginSuccess}) {
     };
 
     const isWaitingForConfirmation = status === 'confirmName' || status === 'confirmEmail';
-
-    const verifyEmail = async(email) => {
-        try {
-            const verifyEmailResponse = await fetch(`${BASE}/login/verify_email`, {
-                method: 'POST',
-                credentials: 'include', 
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email }),
-            });
-            const isVerifiedEmail = await verifyEmailResponse.json();
-            return isVerifiedEmail.verified;
-        }
-
-        catch (error) {
-            console.log(error);
-            console.log("error in verifying email");
-            return null;
-
-        }
-    };
     
     // AKA verifying your password
     const loginToAccount = async(password) => {
