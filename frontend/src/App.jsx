@@ -440,6 +440,7 @@ function App() {
 									value={inputVal}
 									onChange={(e) => setInputVal(e.target.value)}
 									onSubmit={handleSubmit}
+									disabled={isTyping}
 									placeholder={messages.length === 0 ? "What is your question" : "Reply..."}
 									
 								/>

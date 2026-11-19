@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ChatThread } from '../chat/ChatThread';
 import { Input } from '../buttons/Input';
-import { YesOrNoButton } from '../buttons/YesOrNoButton';
+import { TwoOptionButton } from '../buttons/TwoOptionButton';
 
 // add in onBackToChat when implement guest state
 export function LoginView({ onLoginSuccess }) {
@@ -19,7 +19,7 @@ export function LoginView({ onLoginSuccess }) {
     // default to login -> mainly used at the password state
     // login + password -> ask for their set password
     // signup + password -> ask them to create a password
-    const [loginOrSignup, setLoginOrSignup] = useState('login');
+    const [loginOrSignup, setLoginOrSignup] = useState('');
 
     // only confirm name after user types in a valid input
     const [username, setUsername] = useState('');
@@ -48,89 +48,9 @@ export function LoginView({ onLoginSuccess }) {
 
         const trimmedInput = inputVal.trim();
         if (!trimmedInput) return;
-        // check for login/signup
-        if (status === '') {
-            console.log("------------------start of trying to login/signup-----------------------");
-            printAllFields();
-            // user wants to login
-            if (trimmedInput.toLowerCase() === 'login') {
-                // immediately ask user for their email
-                
-                const userMsg = { 
-                    id: crypto.randomUUID(), 
-                    sender: 'user', 
-                    text: trimmedInput, 
-                    timestamp: new Date().toISOString()
-                };
-
-
-                const confirmLoginMsg = {
-                    id: crypto.randomUUID(),
-                    sender: 'sam',
-                    text: `Ok, I will help you login now! Please give me your email`,
-                    timestamp: new Date().toISOString()
-                };
-
-                setMessages((prev) => [...prev, userMsg]);
-                setIsTyping(true);
-                setInputVal('');
-                
-                await waitOneSecond();
-
-                setMessages((prev) => [...prev, confirmLoginMsg]);
-                setIsTyping(false);
-
-                
-                setStatus('email');
-                setLoginOrSignup('login');
-            } 
-
-            // user wants to signup
-            else if (trimmedInput.toLowerCase() === 'signup') {
-                // ask user for their name first
-
-                const userMsg = { 
-                    id: crypto.randomUUID(), 
-                    sender: 'user', 
-                    text: trimmedInput, 
-                    timestamp: new Date().toISOString()
-                };
-
-
-                const confirmSignupMsg = {
-                    id: crypto.randomUUID(),
-                    sender: 'sam',
-                    text: `Ok, I will help you signup now!`,
-                    timestamp: new Date().toISOString()
-                };
-
-                const askForNameMsg = {
-                    id: crypto.randomUUID(),
-                    sender: 'sam',
-                    text: `To start off, what's your name?`,
-                    timestamp: new Date().toISOString()
-                };
-
-                setMessages((prev) => [...prev, userMsg, confirmSignupMsg]);
-                setIsTyping(true);
-                setInputVal('');
-                await waitOneSecond();
-
-                setMessages((prev) => [...prev, askForNameMsg]);
-                setIsTyping(false);
-
-                
-                setStatus('name');
-                setLoginOrSignup('signup');
-            }
-
-            else {
-                setError('Please enter login or signup');
-                return;
-            }
-
-            setError('');
-        }
+        
+        console.log("------------------start of trying to login/signup-----------------------");
+        printAllFields();
 
         // check for username
         if (status === 'name') {
@@ -142,27 +62,8 @@ export function LoginView({ onLoginSuccess }) {
             setError('');
             setPendingName(trimmedInput);
 
-            const userMsg = { 
-                id: crypto.randomUUID(), 
-                sender: 'user', 
-                text: trimmedInput, 
-                timestamp: new Date().toISOString()
-            };
-
-            const confirmNameMsg = {
-                id: crypto.randomUUID(),
-                sender: 'sam',
-                text: `I will call you ${trimmedInput} from now on, is that alright with you?`,
-                timestamp: new Date().toISOString()
-            };
-
-            setMessages((prev) => [...prev, userMsg]);
-            setIsTyping(true);
-            setInputVal('');
-            await waitOneSecond();
-
-            setMessages((prev) => [...prev, confirmNameMsg]);
-            setIsTyping(false);
+            await userMsg(trimmedInput);
+            await agentMsg(`I will call you ${trimmedInput} from now on, are you ok with that?`);
             
             setStatus('confirmName')
         }
@@ -175,46 +76,24 @@ export function LoginView({ onLoginSuccess }) {
                 return;
             }
             setError('');
-            setPendingEmail(trimmedInput);
+            setEmail(trimmedInput);
 
-            const userMsg = { 
-                id: crypto.randomUUID(), 
-                sender: 'user', 
-                text: trimmedInput, 
-                timestamp: new Date().toISOString()
-            };
+            await userMsg(trimmedInput);
+            await agentMsg('Thanks for sharing your email with me!');
 
-            const confirmEmailMsg = {
-                id: crypto.randomUUID(),
-                sender: 'sam',
-                text: `Is ${trimmedInput} your email?`,
-                timestamp: new Date().toISOString()
-            };
-            
-            setMessages((prev) => [...prev, userMsg]);
-            setIsTyping(true);
-            setInputVal('');
+            if (loginOrSignup === 'login') {
+                await agentMsg("Okay :) Please enter in your password so I can help you login");
+            }
 
-            await waitOneSecond();
-            setMessages((prev) => [...prev, confirmEmailMsg]);
-            setIsTyping(false);
-            
-            setStatus('confirmEmail')
+            // user is signing up -> let user choose a password
+            if (loginOrSignup === 'signup') {
+                await agentMsg("Got it! Now please choose a password that is at least 8 characters");
+            }
+
+            setStatus('password')
         }
 
         else if (status === 'password') {
-            const agentMsg = async (text) => {
-                setInputVal('');
-                setIsTyping(true);
-                await waitOneSecond();
-                setIsTyping(false);
-                setMessages((prev) => [...prev, {
-                    id: crypto.randomUUID(),
-                    sender: 'sam',
-                    text,
-                    timestamp: new Date().toISOString()
-                }]);
-            };
 
             // ---------- SIGNUP ----------
             if (loginOrSignup === 'signup') {
@@ -230,24 +109,11 @@ export function LoginView({ onLoginSuccess }) {
 
                 setError('');
                 setShowPassword(false);
-
-                
-                const newUserId = await createAccount(username, email, trimmedInput);
-
-                if (!newUserId) {
-                    await agentMsg("Hmm, something went wrong creating your account. Please try a different password or try again later.");
-                    return;
-                }
-
-                setUserId(newUserId);
-                // no sessions yet for a new user
-                onLoginSuccess(newUserId, []);
                 setPassword(trimmedInput);
-                await agentMsg(`Ok :D I have all the info I need now. It was a pleasure to meet you ${username}!`);
-                console.log("-----------------completed signup---------------------");
-                printAllFields();
-                console.log("-----------------------------------------------------");
-                setStatus('done');
+
+                // confirm that user typed in password correctly
+                setStatus('confirmPassword');
+                await agentMsg("Please enter in your password again to double check that you entered it correctly!");
                 return;
             }
 
@@ -262,7 +128,6 @@ export function LoginView({ onLoginSuccess }) {
                     // TODO !!!
                     // DISABLE USER
                     await agentMsg("you have tried too many times, disabling and bringing you back to the start now");
-                    await waitOneSecond();
                     await resetAllFields();
                     // await printAllFields();
                     await agentMsg("Hi! I'm Sam :) Would you like to login or signup?");
@@ -292,6 +157,59 @@ export function LoginView({ onLoginSuccess }) {
             }
         }
         
+        else if (status === 'confirmPassword') {
+            console.log(trimmedInput);
+            console.log(password);
+            if (trimmedInput !== password) {
+                await agentMsg("Sorry, your passwords don't match. Please try again!");
+                await agentMsg("Please choose a password that is at least 8 characters");
+                setStatus('password');
+                return;
+            }
+
+            setPassword(trimmedInput);
+            const newUserId = await createAccount(username, email, trimmedInput);
+
+            if (!newUserId) {
+                await agentMsg("Hmm, something went wrong creating your account. Please try a different password or try again later.");
+                return;
+            }
+
+            setUserId(newUserId);
+            // no sessions yet for a new user
+            onLoginSuccess(newUserId, []);
+            await agentMsg(`Ok :D I have all the info I need now. It was a pleasure to meet you ${username}!`);
+            console.log("-----------------completed signup---------------------");
+            printAllFields();
+            console.log("-----------------------------------------------------");
+            setStatus('done');
+            return;
+        }
+    };
+
+    const isWaitingForConfirmation = status === 'confirmName' || status === 'confirmEmail';
+    const isSignupOrLogin = status === '' && !isWaitingForConfirmation;
+
+    const userMsg = async (text) => {
+        setMessages((prev) => [...prev, {
+            id: crypto.randomUUID(),
+            sender: 'user',
+            text,
+            timestamp: new Date().toISOString()
+        }]);
+    };
+    
+    const agentMsg = async (text) => {
+        setInputVal('');
+        setIsTyping(true);
+        await waitOneSecond();
+        setIsTyping(false);
+        setMessages((prev) => [...prev, {
+            id: crypto.randomUUID(),
+            sender: 'sam',
+            text,
+            timestamp: new Date().toISOString()
+        }]);
     };
 
     const handleConfirmYes = async () => {
@@ -324,40 +242,6 @@ export function LoginView({ onLoginSuccess }) {
             setUsername(pendingName);
             setStatus('email');
         } 
-
-        else if (status === 'confirmEmail') {
-            let tempText = '';
-            console.log(loginOrSignup);
-            // user is logging in -> ask for their password
-            if (loginOrSignup === 'login') {
-                tempText = "Okay :) Please enter in your password so I can help you login";
-            }
-
-            // user is signing up -> let user choose a password
-            if (loginOrSignup === 'signup') {
-                tempText = "Got it! Now please choose a password that is at least 8 characters";
-            }
-
-            console.log(tempText);
-            const passwordMsg = { 
-                id: crypto.randomUUID(), 
-                sender: 'sam', 
-                text: tempText, 
-                timestamp: new Date().toISOString() 
-            };
-
-            setMessages((prev) => [...prev, userMsg]);
-            setIsTyping(true);
-            await waitOneSecond();
-
-            setMessages((prev) => [...prev, passwordMsg])
-            setIsTyping(false);
-            setEmail(pendingEmail);
-            // for debugging rn 
-            // WILL SEND TO BACKEND
-            console.log(email);
-            setStatus('password');
-        }
     };
 
     const handleConfirmNo = async () => {
@@ -407,7 +291,85 @@ export function LoginView({ onLoginSuccess }) {
         }
     };
 
-    const isWaitingForConfirmation = status === 'confirmName' || status === 'confirmEmail';
+    const handleLogin = async () => {
+        // so user cant send a msg when the agent is responding
+        if (isTyping) return;
+
+        const userMsg = { 
+            id: crypto.randomUUID(), 
+            sender: 'user', 
+            text: 'login', 
+            timestamp: new Date().toISOString()
+        };
+
+
+        const confirmLoginMsg = {
+            id: crypto.randomUUID(),
+            sender: 'sam',
+            text: `Ok, I will help you login now! Please give me your email`,
+            timestamp: new Date().toISOString()
+        };
+
+        setMessages((prev) => [...prev, userMsg]);
+        setIsTyping(true);
+        setInputVal('');
+        
+        await waitOneSecond();
+
+        setMessages((prev) => [...prev, confirmLoginMsg]);
+        setIsTyping(false);
+
+        
+        setStatus('email');
+        setLoginOrSignup('login');
+    }
+
+    const handleSignup = async () => {
+        // so user cant send a msg when the agent is responding
+        if (isTyping) return;
+
+        const userMsg = { 
+            id: crypto.randomUUID(), 
+            sender: 'user', 
+            text: 'signup', 
+            timestamp: new Date().toISOString()
+        };
+
+
+        const confirmSignupMsg = {
+            id: crypto.randomUUID(),
+            sender: 'sam',
+            text: `Ok, I will help you signup now!`,
+            timestamp: new Date().toISOString()
+        };
+
+        const askForNameMsg = {
+            id: crypto.randomUUID(),
+            sender: 'sam',
+            text: `To start off, what's your name?`,
+            timestamp: new Date().toISOString()
+        };
+
+        setMessages((prev) => [...prev, userMsg, confirmSignupMsg]);
+        setIsTyping(true);
+        setInputVal('');
+        await waitOneSecond();
+
+        setMessages((prev) => [...prev, askForNameMsg]);
+        setIsTyping(false);
+
+        
+        setStatus('name');
+        setLoginOrSignup('signup');
+    }
+
+    const handleRestart = async () => {
+        // so user cant send a msg when the agent is responding
+        if (isTyping) return;
+        await resetAllFields();
+        await agentMsg("Hi! I'm Sam :) Would you like to login or signup?");
+        return;
+    }
     
     // AKA verifying your password
     const loginToAccount = async(password) => {
@@ -472,6 +434,7 @@ export function LoginView({ onLoginSuccess }) {
         setInputVal('');
         setStatus('');
         setError('');
+        setLoginOrSignup('');
         return;
     };
 
@@ -488,8 +451,20 @@ export function LoginView({ onLoginSuccess }) {
 
     return (
         <div className="flex-1 flex flex-col h-full justify-between overflow-hidden">
-            <div className="p-12 overflow-y-auto max-w-4xl">
+            <div className="flex items-center justify-between max-w-4xl w-full mx-auto px-6 pt-6 shrink-0">
                 <h1 className="text-center text-3xl font-bold text-gray-900 mb-1">Login</h1>
+                {status !== '' && status !== 'done' && (
+                    <div className="flex justify-end px-6 pt-2 shrink-0">
+                        <button
+                            type="button"
+                            onClick={handleRestart}
+                            disabled={isTyping}
+                            className="text-xs text-gray-500 hover:text-gray-800 font-medium py-1 px-3 rounded-full border border-gray-200 bg-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            Restart ↻
+                        </button>
+                    </div>
+                )}
             </div>
 
             <div className="flex-1 flex flex-col h-full justify-between overflow-hidden">
@@ -504,35 +479,45 @@ export function LoginView({ onLoginSuccess }) {
                         )}
 
                         {isWaitingForConfirmation ? (
-                            <YesOrNoButton 
-                            onYes={handleConfirmYes} 
-                            onNo={handleConfirmNo} 
-                            disabled={isTyping}
+                            <TwoOptionButton 
+                                onOption1={handleConfirmYes} 
+                                onOption2={handleConfirmNo} 
+                                option1Text="Yes" 
+                                option2Text="No"
+                                disabled={isTyping}
+                            />
+                        ) : isSignupOrLogin ? (
+                            <TwoOptionButton
+                                onOption1={handleSignup}
+                                onOption2={handleLogin}
+                                option1Text="Signup"
+                                option2Text="Login"
+                                disabled={isTyping}
                             />
                         ) : status === 'done' ? (
                             <p className="text-center text-sm text-gray-500">Completed Login</p>
                         ) : (
                             <div className="relative flex items-center w-full">
                                 <Input
-                                value={inputVal}
-                                onChange={(e) => {
-                                    setInputVal(e.target.value);
-                                    if (error) setError('');
-                                }}
-                                onSubmit={handleSubmit}
-                                placeholder={status === 'password' ? "Enter your password..." : "Type your response..."}
-                                type={status === 'password' && !showPassword ? "password" : "text"}
-                                />
-
-                                {status === 'password' && (
+                                    value={inputVal}
+                                    onChange={(e) => {
+                                        setInputVal(e.target.value);
+                                        if (error) setError('');
+                                    }}
+                                    onSubmit={handleSubmit}
+                                    placeholder={status === 'password' ? "Enter your password..." : "Type your response..."}
+                                    type={(status === 'password' || status === 'confirmPassword') && !showPassword ? "password" : "text"}
+                                >
+                                {(status === 'password' || status === 'confirmPassword') && (
                                     <button
                                         type="button"
                                         onClick={() => setShowPassword((prev) => !prev)}
-                                        className="absolute right-3 text-xs text-gray-500 hover:text-gray-800 font-medium py-1 px-2 focus:outline-none"
+                                        className="text-xs text-gray-500 hover:text-gray-800 font-medium py-1 px-2 focus:outline-none"
                                     >
                                         {showPassword ? "Hide" : "Show"}
                                     </button>
                                 )}
+                                </Input>
                             </div>
                         )}
 
