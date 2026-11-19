@@ -7,6 +7,8 @@ import { ChatThread } from './components/chat/ChatThread';
 import { PastChatsView } from './components/views/PastChatsView';
 import { LoginView } from './components/views/LoginView';
 import { SettingsView } from './components/views/SettingsView';
+import { supabase } from './lib/supabaseClient';
+import { AuthCallback } from './components/views/AuthCallback';
 import './App.css';
 
 function App() {
@@ -26,7 +28,23 @@ function App() {
 	// userId = null -> not logged in
 	const [userId, setUserId] = useState(null);
 
+	// for authentication
+	const isAuthCallback = window.location.pathname === '/auth/callback';
+
 	const BASE = "http://localhost:8000";
+
+	// Get the current Supabase access token and prepare request headers
+	const getAuthHeaders = async () => {
+		const { data, error } = await supabase.auth.getSession();
+
+		if (error || !data.session) {
+			throw new Error('No authenticated Supabase session');
+		}
+
+		return {'Content-Type': 'application/json',
+			'Authorization': `Bearer ${data.session.access_token}`,
+		};
+	};
 
 	// starting a session with the backend
 	// occurs AFTER sending one message
@@ -41,8 +59,7 @@ function App() {
 		try {
 			const startSessionResponse = await fetch(`${BASE}/session/`, {
 				method: 'POST', 
-				credentials: 'include',
-				headers: { 'Content-Type': 'application/json' },
+				headers: await getAuthHeaders(),
 				body: JSON.stringify({ message: payload.text }),
 
 			});
@@ -99,10 +116,7 @@ function App() {
 		try {
 			const response = await fetch(`${BASE}/session/${sessionId}/message`, {
 				method: 'POST',
-				credentials: 'include',
-				headers: {
-					'Content-Type': 'application/json',
-				},
+				headers: await getAuthHeaders(),
 				body: JSON.stringify({ message: payload.text }),
 			});
 
@@ -280,10 +294,7 @@ function App() {
 		try {
 			const pastChatResponse = await fetch(`${BASE}/session/${chatSession.session_id}`, {
 				method: 'POST',
-				credentials: 'include',
-				headers: {
-					'Content-Type': 'application/json',
-				},
+				headers: await getAuthHeaders(),
 			});
 
 			if (!pastChatResponse.ok) {
@@ -316,6 +327,7 @@ function App() {
 		setActiveTab('chat');
 	};
 
+
 	const handleOpenPastChats = () => {
 		// save current session
 		// saveCurrentSession();
@@ -325,41 +337,28 @@ function App() {
 	};
 
 	const handleLogout = async () => {
-        try {
-			const logoutResponse = await fetch(`${BASE}/login/logout`, {
-				method: 'GET',
-				credentials: 'include',
-			});
+		try {
+			const { error } = await supabase.auth.signOut();
 
-
-			const loggedOut = await logoutResponse.json();
-			// DEBUGGING ONLY 
-			console.log("am i able to logout...???", loggedOut.logout);
-
-			// successfully logging out clear all msgs and session id and user id
-			// bring user back to the logout state
-			if (loggedOut.logout === 'successful') {
-				setUserId(null);
-				setMessages([]);
-				setSessionId(null);
-				setActiveTab('login');
-
-				// DEBUGGING ONLY
-				console.log("logging out userid: ", userId);
-				console.log("logging out sessionid: ", sessionId);
-				console.log("successfully logged out :D");
+			if (error) {
+				console.error('Logout failed:', error);
 				return;
 			}
 
-			// failed to logout idk what we should do yet
-			console.log("erm could not logout successfully.....oopsies");
-			
+			// Clear frontend state
+			setUserId(null);
+			setMessages([]);
+			setSessionId(null);
+			setSessions([]);
+			setInputVal('');
+			setActiveTab('login');
+
+			console.log('Successfully logged out!');
 		}
 		catch (error) {
-			console.log(error);
-			console.log("error in logging out");
+			console.error('Error logging out:', error);
 		}
-    };
+	};
 
 	const saveCurrentSession = () => {
 		{/*
@@ -396,9 +395,10 @@ function App() {
 	// retrieve all the sessions from the backend
 	const getAllSessions = async () => {
 		try {
+
 			const sessionsResponse = await fetch(`${BASE}/session/get_sessions`, {
 				method: 'GET',
-				credentials: 'include',
+				headers: await getAuthHeaders(),
 			});
 
 			if (!sessionsResponse.ok) {
@@ -413,12 +413,23 @@ function App() {
 			console.log(error);
 			console.log("error in retrieving all sessions");
 		}
-	};
+    };
+
 
   	return (
     	<div className="flex h-screen w-full bg-[#f6f7f5] text-gray-800 font-sans">
 
-			{activeTab === 'login' ? (
+			{isAuthCallback ? (
+				<AuthCallback
+					onLoginSuccess={(loginId, loginSessions) => {
+						setUserId(loginId);
+						setSessions(loginSessions);
+						window.history.replaceState({}, '', '/');
+						setActiveTab('chat');
+					}}
+				/>
+
+			) : activeTab === 'login' ? (
 				<LoginView
 					onBackToChat={() => setActiveTab('chat')}
 					onLoginSuccess={(loginId, loginSessions) => {

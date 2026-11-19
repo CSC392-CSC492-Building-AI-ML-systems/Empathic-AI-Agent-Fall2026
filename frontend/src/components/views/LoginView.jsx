@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ChatThread } from '../chat/ChatThread';
 import { Input } from '../buttons/Input';
+import { supabase } from '../../lib/supabaseClient';
 import { TwoOptionButton } from '../buttons/TwoOptionButton';
 
 // add in onBackToChat when implement guest state
@@ -14,9 +15,10 @@ export function LoginView({ onLoginSuccess }) {
     const [inputVal, setInputVal] = useState('');
     const [error, setError] = useState('');
 
-    // status = 'name' | 'confirmName' | 'email' | 'confirmEmail' | 'password' | 'confirmPassword' | 'done'
+    // status = 'name' | 'confirmName' | 'email' | 'confirmEmail' | 'password' | 'confirmPassword' | 'awaitingVerification' | 'done'
+    // confirming password and awaiting verification are only for signup, NOT login
     const [status, setStatus] = useState('');
-    // default to login -> mainly used at the password state
+
     // login + password -> ask for their set password
     // signup + password -> ask them to create a password
     const [loginOrSignup, setLoginOrSignup] = useState('');
@@ -115,6 +117,7 @@ export function LoginView({ onLoginSuccess }) {
                 setStatus('confirmPassword');
                 await agentMsg("Please enter in your password again to double check that you entered it correctly!");
                 return;
+
             }
 
             // ---------- LOGIN ----------
@@ -134,21 +137,18 @@ export function LoginView({ onLoginSuccess }) {
                     return;
                 }
 
-                // check if this is null???
-                let newUserId = await loginToAccount(trimmedInput);
-                console.log(newUserId);
-
-                if (!newUserId || !newUserId.user_id) {
+                const loginData = await loginToAccount(trimmedInput);
+                if (!loginData || !loginData.user || !loginData.session){
                     setShowPassword(false);
                     await agentMsg("Hey, I think you entered the wrong password, or your account doesn't exist. Please try again!");
                     setPasswordAttempts(passwordAttempts + 1);
                     return;
                 }
 
-                setUserId(newUserId.user_id);
-                setUsername(newUserId.nickname);
-                onLoginSuccess(newUserId.user_id, newUserId.sessions);
-                setPassword(trimmedInput);
+                const userId = loginData.user.id;
+                setUserId(userId);
+                onLoginSuccess(userId, []);
+
                 await agentMsg("Ok :D I have all the info I need now. You are all logged in now!");
                 console.log("-----------------completed login---------------------");
                 printAllFields();
@@ -169,16 +169,29 @@ export function LoginView({ onLoginSuccess }) {
             }
 
             setPassword(trimmedInput);
-            const newUserId = await createAccount(username, email, trimmedInput);
 
-            if (!newUserId) {
+            // creating an account using supabase -> will send a verification email to the user
+            const signupData = await createAccount(username, email, trimmedInput);
+
+            if (!signupData || !signupData.user) {
                 await agentMsg("Hmm, something went wrong creating your account. Please try a different password or try again later.");
                 return;
             }
 
+            if (!signupData.session){
+                await agentMsg("I've sent you a verification email! Please check your inbox and click the link to finish creating your account.");
+                // wait for email verification and then we're done!
+                setStatus('awaitingVerification');
+                return; 
+            }
+            
+            const newUserId = signupData.user.id;
+
             setUserId(newUserId);
-            // no sessions yet for a new user
+            // signup -> new user -> no chat history
             onLoginSuccess(newUserId, []);
+            // password is handled by supabase now
+            
             await agentMsg(`Ok :D I have all the info I need now. It was a pleasure to meet you ${username}!`);
             console.log("-----------------completed signup---------------------");
             printAllFields();
@@ -249,30 +262,14 @@ export function LoginView({ onLoginSuccess }) {
         // so user cant send a msg when the agent is responding
 		if (isTyping) return;
 
-        const userMsg = { 
-            id: crypto.randomUUID(), 
-            sender: 'user', 
-            text: 'No', 
-            timestamp: new Date().toISOString() 
-        };
+        await userMsg('No');
         
         if (status === 'confirmName') {
-            
-            const retryMsg = { 
-                id: crypto.randomUUID(), 
-                sender: 'sam', 
-                text: "ok, maybe I read wrong, what is your name again?", 
-                timestamp: new Date().toISOString() 
-            };
 
-            setMessages((prev) => [...prev, userMsg]);
-
-            setIsTyping(true);
-            await waitOneSecond();
-
-            setMessages((prev) => [...prev, retryMsg])
+            await agentMsg("ok, maybe I read wrong, what is your name again?");
             setIsTyping(false);
             setStatus('name');
+
         } 
         else if (status === 'confirmEmail') {
             const retryMsg = { 
@@ -296,73 +293,24 @@ export function LoginView({ onLoginSuccess }) {
         // so user cant send a msg when the agent is responding
         if (isTyping) return;
 
-        const userMsg = { 
-            id: crypto.randomUUID(), 
-            sender: 'user', 
-            text: 'login', 
-            timestamp: new Date().toISOString()
-        };
-
-
-        const confirmLoginMsg = {
-            id: crypto.randomUUID(),
-            sender: 'sam',
-            text: `Ok, I will help you login now! Please give me your email`,
-            timestamp: new Date().toISOString()
-        };
-
-        setMessages((prev) => [...prev, userMsg]);
-        setIsTyping(true);
-        setInputVal('');
-        
-        await waitOneSecond();
-
-        setMessages((prev) => [...prev, confirmLoginMsg]);
-        setIsTyping(false);
-
+        await userMsg('login');
+        await agentMsg("Ok :) Please enter in your email so I can help you login");
         
         setStatus('email');
         setLoginOrSignup('login');
-    }
+    };
 
     const handleSignup = async () => {
         // so user cant send a msg when the agent is responding
         if (isTyping) return;
 
-        const userMsg = { 
-            id: crypto.randomUUID(), 
-            sender: 'user', 
-            text: 'signup', 
-            timestamp: new Date().toISOString()
-        };
-
-
-        const confirmSignupMsg = {
-            id: crypto.randomUUID(),
-            sender: 'sam',
-            text: `Ok, I will help you signup now!`,
-            timestamp: new Date().toISOString()
-        };
-
-        const askForNameMsg = {
-            id: crypto.randomUUID(),
-            sender: 'sam',
-            text: `To start off, what's your name?`,
-            timestamp: new Date().toISOString()
-        };
-
-        setMessages((prev) => [...prev, userMsg, confirmSignupMsg]);
-        setIsTyping(true);
-        setInputVal('');
-        await waitOneSecond();
-
-        setMessages((prev) => [...prev, askForNameMsg]);
-        setIsTyping(false);
-
+        await userMsg('signup');
+        await agentMsg("Ok :) I will help you create an account");
+        await agentMsg("To start off, what would you like me to call you?");
         
         setStatus('name');
         setLoginOrSignup('signup');
-    }
+    };
 
     const handleRestart = async () => {
         // so user cant send a msg when the agent is responding
@@ -370,55 +318,51 @@ export function LoginView({ onLoginSuccess }) {
         await resetAllFields();
         await agentMsg("Hi! I'm Sam :) Would you like to login or signup?");
         return;
-    }
+    };
     
-    // AKA verifying your password
+    // using supabaset to login to an account -> returns data if successful, null if not
     const loginToAccount = async(password) => {
-        // logging in is essentially also just verifying your password
-        // on success -> receive uuid from backend
-        // on fail -> uuid = None
-        try {
-            const loginResponse = await fetch(`${BASE}/login/`, {
-                method: 'POST',
-                credentials: 'include',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify( {email, password} ),
-            });
+         try {
+            const { data, error } =
+                await supabase.auth.signInWithPassword({
+                    email,
+                    password
+                });
 
-            if (!loginResponse.ok) {
-                return null;
-            } 
-            
-            const isLoggedIn = await loginResponse.json();
-
-            if (!isLoggedIn.user_id || isLoggedIn.user_id === 'None') {
+            if (error) {
+                console.error("Login error:", error.message);
                 return null;
             }
-            
-            return isLoggedIn;
+
+            return data;
         }
-        
         catch (error) {
-            console.log(error);
-            console.log("error in logging in - email and password dont match");
+            console.error("Error logging in:", error);
             return null;
         }
     };
 
+    // using supabase to create an account -> returns data if successful, null if not
     const createAccount = async(name, email, password) => {
         try {
-            const createAccountResponse = await fetch(`${BASE}/login/create_account`, {
-                method: 'POST',
-                credentials: 'include',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ name, email, password }),
+            const { data, error } = await supabase.auth.signUp({
+                email,
+                password,
+                options: {
+                    data: { name },
+                    emailRedirectTo: "http://localhost:5173/auth/callback"
+                }
             });
-            const createdAccount =  await createAccountResponse.json();
-            return createdAccount.user_id;
+
+            if (error) {
+                console.error("error in creating an account:((((( ", error.message);
+                return null;
+            }
+
+            return data;
         }
         catch (error) {
-            console.log(error);
-            console.log("error in creating an account:(((((");
+            console.error("Error creating account:", error);
             return null;
         }
     };
@@ -495,7 +439,11 @@ export function LoginView({ onLoginSuccess }) {
                                 option2Text="Login"
                                 disabled={isTyping}
                             />
-                        ) : status === 'done' ? (
+                        ) : status === 'awaitingVerification' ? ( // lets see how this looks huh lol
+                            <p className="text-center text-sm text-gray-500">
+                                Please verify your email to continue!
+                            </p>
+                        ): status === 'done' ? (
                             <p className="text-center text-sm text-gray-500">Completed Login</p>
                         ) : (
                             <div className="relative flex items-center w-full">

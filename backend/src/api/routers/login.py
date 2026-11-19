@@ -60,7 +60,7 @@ async def create_account(
     if (user_id is None):
          raise HTTPException(status_code=500, detail="Database error")
     cookie = str(uuid4())
-    response.set_cookie(key="Cookie", value=cookie)
+    response.set_cookie(key="Cookie", value=cookie, httponly=True, samesite="none", secure=True)    
     hash = request.app.state.session_hash
     hash[cookie] = user_id
 
@@ -85,7 +85,7 @@ async def login(
 
         # Creates cookie and adds cookie to uuid hash
         cookie = str(uuid4())
-        response.set_cookie(key="Cookie", value=cookie)    
+        response.set_cookie(key="Cookie", value=cookie, httponly=True, samesite="none", secure=True)    
         hash = request.app.state.session_hash
         hash[cookie] = uuid
         #user = await user_dao.get_user(uuid) unused?
