@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 // items = [{ label, onSelect, disabled?, hint? }]
-export function MessageContextMenu({ x, y, items, onClose }) {
+export function MessageMenu({ x, y, items, onClose }) {
 	const menuRef = useRef(null);
 	const [pos, setPos] = useState({ left: x, top: y });
 

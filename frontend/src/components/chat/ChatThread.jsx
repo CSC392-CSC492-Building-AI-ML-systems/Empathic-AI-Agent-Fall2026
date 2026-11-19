@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ChatBubble } from './ChatBubble';
 import { AgentThinking } from './AgentThinking';
-import { MessageContextMenu } from './MessageContextMenu';
+import { MessageMenu } from './MessageMenu';
 
 export function ChatThread({ messages, isTyping, onBranch, canBranch = false }) {
 	const messagesEndRef = useRef(null);
@@ -56,7 +56,7 @@ export function ChatThread({ messages, isTyping, onBranch, canBranch = false }) 
 
 			{/* menu closes itself if the chat was cleared underneath it */}
 			{menu && messages[menu.index] && (
-				<MessageContextMenu
+				<MessageMenu
 					x={menu.x}
 					y={menu.y}
 					items={buildMenuItems(menu.index)}
