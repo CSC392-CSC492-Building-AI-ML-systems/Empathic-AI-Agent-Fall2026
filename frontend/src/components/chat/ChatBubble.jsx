@@ -1,6 +1,6 @@
 import { HeartIcon, UserIcon } from '../buttons/Icons';
 
-export function ChatBubble({ sender, text, timestamp }) {
+export function ChatBubble({ sender, text, timestamp, onContextMenu }) {
 	const isBot = sender === 'sam';
 
 	// adding in a place for time
@@ -11,6 +11,7 @@ export function ChatBubble({ sender, text, timestamp }) {
 	return (
 		<div className={`flex flex-col ${isBot ? 'items-start' : 'items-end'}`}>
 		<div
+			onContextMenu={onContextMenu}
 			className={`w-full max-w-xl rounded-2xl p-5 shadow-xs space-y-2 ${
 			isBot ? 'bg-white border border-gray-100' : 'bg-[#e3eae1]'
 			}`}

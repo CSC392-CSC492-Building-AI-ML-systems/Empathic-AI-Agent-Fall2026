@@ -146,6 +146,7 @@ export function LoginView({ onLoginSuccess }) {
                 }
 
                 setUserId(newUserId.user_id);
+                setUsername(newUserId.nickname);
                 onLoginSuccess(newUserId.user_id, newUserId.sessions);
                 setPassword(trimmedInput);
                 await agentMsg("Ok :D I have all the info I need now. You are all logged in now!");
@@ -193,7 +194,7 @@ export function LoginView({ onLoginSuccess }) {
     const userMsg = async (text) => {
         setMessages((prev) => [...prev, {
             id: crypto.randomUUID(),
-            sender: 'user',
+            sender: username !== '' ? username : 'user',
             text,
             timestamp: new Date().toISOString()
         }]);

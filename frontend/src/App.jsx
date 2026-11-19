@@ -156,6 +156,40 @@ function App() {
     	setInputVal('');
 		setSessionId(null);
 	};
+
+	// right clicking on a msg to bring to a new chat
+	const handleBranch = async (index) => {
+		const msg = messages[index];
+		if (isTyping) return;
+
+		// fresh chat, no session yet
+		setActiveTab('chat');
+		setSessionId(null);
+		setInputVal('');
+		setMessages([{ ...msg, id: Date.now(), timestamp: new Date().toISOString() }]);
+
+		// agent message -> just show it as the first bubble
+		// nothing goes to the backend, the user's first reply starts the session like normal
+		if (msg.sender === 'sam') return;
+
+		// user message -> send it as the first message of the new session
+		setIsTyping(true);
+		const [agentResponse] = await Promise.all([
+			startSession({ text: msg.text }),
+			waitOneSecond(),
+		]);
+
+		setMessages((prev) => [
+			...prev,
+			{
+				id: Date.now() + 1,
+				sender: 'sam',
+				text: agentResponse ?? "Sorry, can you repeat what you said one more time?",
+				timestamp: new Date().toISOString(),
+			},
+		]);
+		setIsTyping(false);
+	};
 	
 	// get msg from user and display
 	const handleSubmit = async (e) => {
@@ -431,7 +465,12 @@ function App() {
 								) : (
 								<div className="flex-1 flex flex-col overflow-y-auto">
 									{/* for the thinking before responding of the agent */}
-									<ChatThread messages={messages} isTyping={isTyping} />
+									<ChatThread 
+										messages={messages} 
+										isTyping={isTyping} 
+										onBranch={handleBranch}
+										canBranch={!isTyping}
+									/>
 								</div>
 								)}
 
