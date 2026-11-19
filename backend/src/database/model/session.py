@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from uuid import UUID
 
@@ -9,12 +9,12 @@ from .message import Message
 class Session:
     session_id: UUID
     created_at: datetime
-    context: str
-    tool_context: str
     terminated: bool
     user_id: UUID
     name: str | None
     messages: list[Message]
+    message_context: str | None = None
+    memories_at_turn_start: dict[str, str] = field(default_factory=dict)
 
     def add_message(self, message: Message) -> None:
         """Add Message object to own list of messages"""
