@@ -4,6 +4,7 @@ The test conversations we use to judge the model. This page explains what a
 test case looks like and how to label one, so that two people labelling the same
 conversation end up with the same result.
 
+[`cases.jsonl`](cases.jsonl) holds the test cases the model gets scored on.
 [`examples.jsonl`](examples.jsonl) has one example for each category. It shows
 the format and isn't part of the scored dataset.
 

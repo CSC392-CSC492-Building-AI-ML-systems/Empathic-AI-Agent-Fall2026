@@ -25,7 +25,10 @@ Clarification Service can use it too.
   (see `.env.example`), so switching models never needs a code change
 - `mock.py`: fake LLM client for tests, so nothing hits the network
 - `dataset.py`: test case format, and a checker for dataset files. The format
-  and labelling guide are in [`dataset/README.md`](../../../dataset/README.md)
+  and labelling guide are in [`dataset/README.md`](../../../dataset/README.md),
+  and the test cases are in [`dataset/cases.jsonl`](../../../dataset/cases.jsonl)
+- `replay.py`: plays a test case back like a chat, one message per key press,
+  then shows its labels (`uv run python -m backend.src.eval.replay 3`)
 
 Still to come as the eval issues land:
 
