@@ -89,7 +89,7 @@ async def model_reply(messages: list, model_id: str) -> str:
     return answer
 
 
-async def send_model(session: Session, memories: dict[str, str]) -> str:
+async def send_model(session: Session) -> str:
     if not Settings().hf_token:
         print("Run 'hf auth login', or set HF_TOKEN on your backend.")
         return ""
@@ -101,8 +101,9 @@ async def send_model(session: Session, memories: dict[str, str]) -> str:
         return ""
     print("Connected.")
     messages = [{"role": "system", "content": SYSTEM_INSTRUCTIONS}]
+    memories = session.memories_at_turn_start
     if memories:
-        messages.append({"role": "system", "content": "Saved user memories: " + json.dumps(memories)})
+        messages.append({"role": "system", "content": "Memories saved before this turn: " + json.dumps(memories)})
 
     for message in session.get_conversation_for_model():
         if message["role"] in ("user", "assistant"):
@@ -114,7 +115,3 @@ async def send_model(session: Session, memories: dict[str, str]) -> str:
         return ""
 
     return answer
-
-
-if __name__ == "__main__":
-    asyncio.run(send_model())
