@@ -41,7 +41,7 @@ export function LoginView({ onLoginSuccess }) {
 
     const [userId, setUserId] = useState('')
 
-    const BASE = "http://localhost:8000";
+    // const BASE = "http://localhost:8000";
 
     const handleSubmit = async (e) => {
         e.preventDefault();
