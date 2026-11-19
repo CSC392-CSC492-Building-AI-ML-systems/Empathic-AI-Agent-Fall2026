@@ -1,6 +1,6 @@
 import asyncio
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from uuid import UUID
 
 from ..database.dao.message_dao import MessageDao
@@ -32,26 +32,23 @@ def parse(raw: str) -> Decision:
         raise TypeError("Decision must be a JSON object")
 
     call = data.get("call")
-    if call not in ("RESPOND", "SAVE-TO-MEMORY", "TERMINATE-SESSION"):
+    if call not in ("RESPOND", "UPDATE-MEMORY", "TERMINATE-SESSION", "REMOVE-MEMORY"):
         raise ValueError("Unknown decision call")
 
     content = data.get("content", "")
     if not isinstance(content, str):
         raise TypeError("Decision content must be a string")
 
-    memory_key = data.get("memory_key")
-    if call == "SAVE-TO-MEMORY":
+    memory_key = None
+    if call in ("UPDATE-MEMORY", "REMOVE-MEMORY"):
+        memory_key = data.get("memory_key")
         if not isinstance(memory_key, str) or not memory_key.strip():
-            raise ValueError("SAVE-TO-MEMORY requires a memory_key")
-        if not content.strip():
-            raise ValueError("SAVE-TO-MEMORY requires content")
+            raise ValueError(f"{call} requires a memory_key")
         memory_key = memory_key.strip()
-    else:
-        memory_key = None
+        if call == "UPDATE-MEMORY" and not content.strip():
+            raise ValueError("UPDATE-MEMORY requires content")
 
-    if call != "RESPOND":
-        return Decision(raw, True, call, content, memory_key)
-    return Decision(raw, False, call, content, memory_key)
+    return Decision(raw, call != "RESPOND", call, content, memory_key)
 
 @dataclass(kw_only=True)
 class GenericJob:
@@ -82,7 +79,10 @@ class GenericJob:
 
         if self.turn_count < TURN_LIMIT:
             memories = await self.user_dao.get_memories(session.user_id)
-            raw = await model_decide(session, memories)
+            if self.turn_count == 0:
+                session = replace(session, memories_at_turn_start=memories.copy())
+            tool_context = await self.session_dao.get_tool_context(self.session_id)
+            raw = await model_decide(session, tool_context=tool_context, memories=memories)
             decision = parse(raw)
 
             if decision.call == "RESPOND":
@@ -96,8 +96,19 @@ class GenericJob:
                                   session_id=self.session_id,
                                   message=self.message,
                                   decision=decision)
-            if decision.call == "SAVE-TO-MEMORY":
+            elif decision.call == "UPDATE-MEMORY":
                 job = UpdateMemoryJob(message_dao=self.message_dao,
+                                      session_dao=self.session_dao,
+                                      user_dao=self.user_dao,
+                                      response_future=self.response_future,
+                                      queue=self.queue,
+                                      turn_count=self.turn_count + 1,
+                                      session=session,
+                                      session_id=self.session_id,
+                                      message=self.message,
+                                      decision=decision)
+            elif decision.call == "REMOVE-MEMORY":
+                job = RemoveMemoryJob(message_dao=self.message_dao,
                                       session_dao=self.session_dao,
                                       user_dao=self.user_dao,
                                       response_future=self.response_future,
@@ -119,12 +130,12 @@ class GenericJob:
                                           message=self.message,
                                           decision=decision)
 
-            if job is None:
-                self._finish("AGENT-ERROR")
-                return
-
             if decision.is_tool_call:
                 await self.message_dao.add_message("tool", decision.raw, self.session_id)
+
+        if job is None:
+            self._finish("AGENT-ERROR")
+            return
 
         await self.queue.put(job)
 
@@ -134,7 +145,12 @@ class GenericJob:
         session = await self.session_dao.get_session(self.session_id)
         await self._decide(session)
 
+"""
+TERMINAL STATE
 
+Takes memories and contexts, sends them to Edward's fine tune model and gets the response.
+Response is returned to the future this state holds.
+"""
 class ResponseJob(GenericJob):
 
     async def run(self):
@@ -143,12 +159,32 @@ class ResponseJob(GenericJob):
             self._finish("AGENT-ERROR")
             return
 
-        memories = await self.user_dao.get_memories(self.session.user_id)
-        response = await send_model(self.session, memories)
+        response = await send_model(self.session)
         await self.message_dao.add_message("assistant", response, self.session_id)
         self._finish(response)
 
+"""
+NON TERMINAL STATE
 
+Removes a memory entry from the memory table then chooses the next state.
+"""
+class RemoveMemoryJob(GenericJob):
+
+    async def run(self):
+
+        if not self.session or not self.decision or not self.decision.memory_key:
+            self._finish("AGENT-ERROR")
+            return
+
+        await self.user_dao.remove_memory(self.session.user_id,
+                                          self.decision.memory_key)
+        await self._decide(self.session)
+
+"""
+NON TERMINAL STATE
+
+Add/updates a memory entry from the memory table then chooses the next state.
+"""
 class UpdateMemoryJob(GenericJob):
 
     async def run(self):
@@ -162,7 +198,30 @@ class UpdateMemoryJob(GenericJob):
                                           self.decision.content)
         await self._decide(self.session)
 
+"""
+NON TERMINAL STATE
 
+Runs a websearch and stores the result in the tool context, then chooses the next state.
+"""
+#class WebSearchJob(GenericJob):
+#
+#    async def run(self):
+#
+#        if not self.session or not self.decision or not self.decision.memory_key:
+#            self._finish("AGENT-ERROR")
+#            return
+#
+#        await self.user_dao.upsert_memory(self.session.user_id,
+#                                          self.decision.memory_key,
+#                                          self.decision.content)
+#        await self._decide(self.session)
+
+
+"""
+TERMINAL STATE
+
+Terminates the current session and returns a response to the saved future.
+"""
 class TerminateSessionJob(GenericJob):
 
     async def run(self):
