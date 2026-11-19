@@ -45,20 +45,18 @@ async def start_conversation_state(
                                                   tool_context="",
                                                   terminated=False)
 
-    owner = asyncio.get_running_loop().create_future()
+    response_future = asyncio.get_running_loop().create_future()
     job = GenericJob(
         message_dao=request.app.state.message_dao,
         session_dao=request.app.state.session_dao,
         user_dao=request.app.state.user_dao,
-        owner=owner,
+        response_future=response_future,
         queue=request.app.state.job_queue,
         session_id=UUID(str(session_id)),
         message=message.message,
-        turn_count=0,
-        session=None,
-        decision=None)
+    )
     await request.app.state.job_queue.put(job)
-    response = await owner
+    response = await response_future
 
     return {"session_id": session_id, "response": response}
 
@@ -94,20 +92,18 @@ async def send_conversation_state(
     if cookie not in s_hash:
         raise HTTPException(status_code=401, detail="Invalid or missing authentication cookie")
 
-    owner = asyncio.get_running_loop().create_future()
+    response_future = asyncio.get_running_loop().create_future()
     job = GenericJob(
         message_dao=request.app.state.message_dao,
         session_dao=request.app.state.session_dao,
         user_dao=request.app.state.user_dao,
-        owner=owner,
+        response_future=response_future,
         queue=request.app.state.job_queue,
         session_id=UUID(str(session_id)),
         message=message.message,
-        turn_count=0,
-        session=None,
-        decision=None)
+    )
     await request.app.state.job_queue.put(job)
-    response = await owner
+    response = await response_future
 
     # respond
     return {"response": response}

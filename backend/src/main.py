@@ -47,7 +47,7 @@ async def lifespan(app: FastAPI):
         # Clear all jobs from queue
         while not app.state.job_queue.empty():
             job = await app.state.job_queue.get()
-            job.owner.cancel()
+            job.response_future.cancel()
             app.state.job_queue.task_done()
 
         await pool.close()
