@@ -11,6 +11,7 @@ from .evaluate_answer import model_decide, model_web_search
 from .fine_tune import send_model
 
 TURN_LIMIT = 10
+SESSION_CLOSED_REPLY = "This session has been terminated."
 
 @dataclass
 class Decision:
@@ -66,16 +67,16 @@ class GenericJob:
     decision: Decision | None = None
 
     def _finish(self, response: str) -> None:
-        self.response_future.set_result(response)
+        if not self.response_future.done():
+            self.response_future.set_result(response)
 
     async def _decide(self, session: Session) -> None:
         """Queue the next job or resolve the request's response future."""
         if not session:
-            self._finish("AGENT-ERROR")
-            return
+            raise RuntimeError("Cannot choose an agent action without a session")
 
         if session.terminated:
-            self._finish("This session has been terminated.")
+            self._finish(SESSION_CLOSED_REPLY)
             return
 
         job = None
@@ -105,12 +106,10 @@ class GenericJob:
                 await self.message_dao.add_message("tool", decision.raw, self.session_id)
 
         if job is None:
-            self._finish("AGENT-ERROR")
-            return
+            raise RuntimeError(f"Agent exceeded the decision turn limit ({TURN_LIMIT})")
 
         await self.queue.put(job)
 
-    # First job only needs to add msg to database then decide
     async def run(self):
         await self.message_dao.add_message("user", self.message, self.session_id)
         session = await self.session_dao.get_session(self.session_id)
@@ -127,8 +126,7 @@ class ResponseJob(GenericJob):
     async def run(self):
 
         if not self.session:
-            self._finish("AGENT-ERROR")
-            return
+            raise RuntimeError("Cannot generate a response without a session")
 
         tool_context = await self.session_dao.get_tool_context(self.session_id)
         response = await send_model(self.session, tool_context=tool_context)
@@ -145,8 +143,7 @@ class RemoveMemoryJob(GenericJob):
     async def run(self):
 
         if not self.session or not self.decision or not self.decision.memory_key:
-            self._finish("AGENT-ERROR")
-            return
+            raise RuntimeError("Removing a memory requires a session and a decision with a memory key")
 
         await self.user_dao.remove_memory(self.session.user_id,
                                           self.decision.memory_key)
@@ -162,8 +159,7 @@ class UpdateMemoryJob(GenericJob):
     async def run(self):
 
         if not self.session or not self.decision or not self.decision.memory_key:
-            self._finish("AGENT-ERROR")
-            return
+            raise RuntimeError("Updating a memory requires a session and a decision with a memory key")
 
         await self.user_dao.upsert_memory(self.session.user_id,
                                           self.decision.memory_key,
@@ -179,8 +175,7 @@ class WebSearchJob(GenericJob):
 
     async def run(self):
         if not self.session or not self.decision:
-            self._finish("AGENT-ERROR")
-            return
+            raise RuntimeError("Web search requires a session and a decision")
 
         result = await model_web_search(self.decision.content)
         await self.session_dao.add_tool_context(self.session_id, result)
