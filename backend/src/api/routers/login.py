@@ -2,7 +2,7 @@ from uuid import uuid4
 
 import bcrypt
 from fastapi import APIRouter, HTTPException, Request, Response, status
-from pydantic import AliasChoices, BaseModel, Field
+from pydantic import BaseModel
 
 
 class login(BaseModel):
