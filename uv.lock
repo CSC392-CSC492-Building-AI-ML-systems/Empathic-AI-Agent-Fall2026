@@ -406,6 +406,7 @@ requires-dist = [
     { name = "httpx2", specifier = ">=2.13.1" },
     { name = "huggingface-hub", specifier = ">=2.3.0" },
     { name = "npm", specifier = ">=0.1.1" },
+    { name = "openai", specifier = ">=2.0.0" },
     { name = "openai", specifier = ">=3.49.0" },
     { name = "openrouter", specifier = ">=1.3.166" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.3.6" },
