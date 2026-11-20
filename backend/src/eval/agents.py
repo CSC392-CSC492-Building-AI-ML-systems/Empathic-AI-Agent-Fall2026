@@ -7,9 +7,48 @@ has to beat both, and if its scores ever look like one of them, something is
 broken.
 """
 
+import re
+from pathlib import Path
+
 from pydantic import BaseModel
 
 from ..clarification import AgentReply, Turn
+
+PROMPTS_DIR = Path(__file__).resolve().parents[3] / "prompts"
+PROMPT_VERSION = re.compile(r"v\d{3}")
+
+
+class Prompt(BaseModel):
+    """A system prompt and the version it came from"""
+
+    version: str
+    text: str
+
+
+def load_prompt(version: str, prompts_dir: Path = PROMPTS_DIR) -> Prompt:
+    """Loads prompts/clarifier_<version>.md, like load_prompt("v001")
+
+    Each change to the prompt goes in a new file with the next version number,
+    and old files are never edited, so a run's prompt version always points to
+    the exact text it used.
+    """
+    if not PROMPT_VERSION.fullmatch(version):
+        raise ValueError(f"Prompt version should look like v001, not {version!r}")
+
+    path = prompts_dir / f"clarifier_{version}.md"
+    if not path.is_file():
+        found = sorted(
+            p.stem.removeprefix("clarifier_")
+            for p in prompts_dir.glob("clarifier_v*.md")
+        )
+        raise FileNotFoundError(
+            f"No prompt {version} at {path}. Found: {', '.join(found) or 'none'}"
+        )
+
+    text = path.read_text(encoding="utf-8").strip()
+    if not text:
+        raise ValueError(f"{path} is empty")
+    return Prompt(version=version, text=text)
 
 
 class AgentInfo(BaseModel):
