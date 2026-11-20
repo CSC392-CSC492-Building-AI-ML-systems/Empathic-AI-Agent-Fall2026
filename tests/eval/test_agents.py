@@ -3,8 +3,38 @@ from pathlib import Path
 
 import pytest
 
-from backend.src.clarification import Agent, AgentReply, Turn
-from backend.src.eval.agents import AlwaysAnswerAgent, AlwaysAskAgent, load_prompt
+from backend.src.clarification import Agent, AgentReply, Kind, Turn
+from backend.src.eval.agents import (
+    AlwaysAnswerAgent,
+    AlwaysAskAgent,
+    Prompt,
+    PromptedAgent,
+    load_prompt,
+)
+from backend.src.eval.llm import LLMError, LLMResponse, Messages
+from backend.src.eval.mock import MockLLMClient
+
+PROMPT = Prompt(version="v123", text="Ask when you need to, answer when you can.")
+
+
+class FakeLabeller:
+    """Gives every reply the same kind, and records what it was asked"""
+
+    def __init__(self, kind: Kind) -> None:
+        self.kind = kind
+        self.calls: list[tuple[list[Turn], str]] = []
+
+    async def label(self, history: list[Turn], reply: str) -> Kind:
+        self.calls.append((history, reply))
+        return self.kind
+
+
+class FailingLLMClient:
+    """A model client that always errors, like when the provider is down"""
+
+    async def complete(self, messages: Messages, **kwargs: object) -> LLMResponse:
+        raise LLMError("HTTP 503: unavailable")
+
 
 ONE_MESSAGE = [Turn(role="user", content="I want to get better at running.")]
 AFTER_A_QUESTION = [
@@ -88,3 +118,101 @@ def test_load_prompt_rejects_an_empty_file(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="is empty"):
         load_prompt("v001", tmp_path)
+
+
+def test_prompted_agent_sends_prompt_then_history(mock_llm: MockLLMClient) -> None:
+    """The model sees the system prompt first, then the conversation in order"""
+
+    mock_llm.add_replies("How far can you run right now?")
+    agent = PromptedAgent(mock_llm, FakeLabeller("clarify"), PROMPT)
+
+    asyncio.run(agent.respond(AFTER_A_QUESTION))
+
+    sent = mock_llm.calls[0].messages
+    assert sent[0] == {"role": "system", "content": PROMPT.text}
+    assert sent[1:] == [turn.model_dump() for turn in AFTER_A_QUESTION]
+
+
+def test_prompted_agent_passes_model_settings(mock_llm: MockLLMClient) -> None:
+    """The model and its settings go to the client unchanged"""
+
+    mock_llm.add_replies("Here's a plan.")
+    agent = PromptedAgent(
+        mock_llm,
+        FakeLabeller("answer"),
+        PROMPT,
+        model="some/model",
+        temperature=0.7,
+        max_tokens=300,
+    )
+
+    asyncio.run(agent.respond(ONE_MESSAGE))
+
+    call = mock_llm.calls[0]
+    assert (call.model, call.temperature, call.max_tokens) == ("some/model", 0.7, 300)
+    assert call.json_mode is False
+
+
+@pytest.mark.parametrize("kind", ["clarify", "answer"])
+def test_prompted_agent_takes_kind_from_labeller(
+    mock_llm: MockLLMClient, kind: Kind
+) -> None:
+    """The labeller decides the kind, and the reply text is kept exactly"""
+
+    text = "  Farther or faster?\n"
+    mock_llm.add_replies(text)
+    labeller = FakeLabeller(kind)
+    agent: Agent = PromptedAgent(mock_llm, labeller, PROMPT)
+
+    reply = asyncio.run(agent.respond(ONE_MESSAGE))
+
+    assert reply == AgentReply(kind=kind, content=text)
+    assert labeller.calls == [(ONE_MESSAGE, text)]
+
+
+def test_prompted_agent_info_for_run_logs() -> None:
+    """A run can record which prompt, model and temperature were used"""
+
+    agent = PromptedAgent(
+        MockLLMClient(), FakeLabeller("answer"), PROMPT, model="m", temperature=0.3
+    )
+
+    assert agent.info.name == "prompted"
+    assert agent.info.prompt_version == "v123"
+    assert (agent.info.model, agent.info.temperature) == ("m", 0.3)
+
+
+def test_prompted_agent_lets_model_errors_through() -> None:
+    """Model errors aren't hidden, so the runner can count them"""
+
+    labeller = FakeLabeller("answer")
+    agent = PromptedAgent(FailingLLMClient(), labeller, PROMPT)
+
+    with pytest.raises(LLMError):
+        asyncio.run(agent.respond(ONE_MESSAGE))
+    assert labeller.calls == []
+
+
+def test_prompted_agent_rejects_empty_history(mock_llm: MockLLMClient) -> None:
+    """Nothing gets sent to the model when there's nothing to reply to"""
+
+    agent = PromptedAgent(mock_llm, FakeLabeller("answer"), PROMPT)
+
+    with pytest.raises(ValueError):
+        asyncio.run(agent.respond([]))
+    assert mock_llm.calls == []
+
+
+def test_prompted_agent_works_with_the_real_first_prompt(
+    mock_llm: MockLLMClient,
+) -> None:
+    """The v001 prompt file plugs straight into the agent"""
+
+    mock_llm.add_replies("Sure, here's a plan.")
+    agent = PromptedAgent(mock_llm, FakeLabeller("answer"), load_prompt("v001"))
+
+    reply = asyncio.run(agent.respond(ONE_MESSAGE))
+
+    assert reply.kind == "answer"
+    assert agent.info.prompt_version == "v001"
+    assert mock_llm.calls[0].messages[0]["content"] == load_prompt("v001").text

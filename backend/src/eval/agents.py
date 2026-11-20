@@ -5,14 +5,20 @@ them all the same way. The two baselines sit at either end of the
 clarify/answer range: one always answers and one always asks. A real agent
 has to beat both, and if its scores ever look like one of them, something is
 broken.
+
+`PromptedAgent` sends the conversation to a model with a versioned prompt.
+The model replies in plain text, like the app's model does, so a separate
+labeller decides whether that reply asks or answers.
 """
 
 import re
 from pathlib import Path
+from typing import Protocol
 
 from pydantic import BaseModel
 
-from ..clarification import AgentReply, Turn
+from ..clarification import AgentReply, Kind, Turn
+from .llm import LLMClient, Messages
 
 PROMPTS_DIR = Path(__file__).resolve().parents[3] / "prompts"
 PROMPT_VERSION = re.compile(r"v\d{3}")
@@ -89,3 +95,64 @@ class AlwaysAskAgent:
     async def respond(self, history: list[Turn]) -> AgentReply:
         _check_history(history)
         return AgentReply(kind="clarify", content=self.REPLY)
+
+
+class Labeller(Protocol):
+    """Decides whether a plain text reply asks a question or answers
+
+    It gets the conversation too, since whether a reply counts as asking can
+    depend on what came before. It should follow the mixed replies rule in
+    dataset/README.md, and should never be the model being tested.
+    """
+
+    async def label(self, history: list[Turn], reply: str) -> Kind: ...
+
+
+class PromptedAgent:
+    """Sends the conversation to a model with a versioned system prompt
+
+    The reply's text is kept exactly as the model wrote it, and the labeller
+    decides its kind. Errors from the model client are not caught, so the
+    runner can count them.
+    """
+
+    def __init__(
+        self,
+        llm: LLMClient,
+        labeller: Labeller,
+        prompt: Prompt,
+        *,
+        model: str | None = None,
+        temperature: float = 0.0,
+        max_tokens: int = 1024,
+    ) -> None:
+        self.llm = llm
+        self.labeller = labeller
+        self.prompt = prompt
+        self.model = model
+        self.temperature = temperature
+        self.max_tokens = max_tokens
+        self.info = AgentInfo(
+            name="prompted",
+            prompt_version=prompt.version,
+            model=model,
+            temperature=temperature,
+        )
+
+    def build_messages(self, history: list[Turn]) -> Messages:
+        """The system prompt, then the conversation in order"""
+        _check_history(history)
+        return [
+            {"role": "system", "content": self.prompt.text},
+            *(turn.model_dump() for turn in history),
+        ]
+
+    async def respond(self, history: list[Turn]) -> AgentReply:
+        response = await self.llm.complete(
+            self.build_messages(history),
+            model=self.model,
+            temperature=self.temperature,
+            max_tokens=self.max_tokens,
+        )
+        kind = await self.labeller.label(history, response.text)
+        return AgentReply(kind=kind, content=response.text)
