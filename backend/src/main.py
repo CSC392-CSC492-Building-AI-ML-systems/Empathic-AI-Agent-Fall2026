@@ -1,3 +1,4 @@
+import asyncio
 from contextlib import asynccontextmanager
 from functools import lru_cache
 from typing import Annotated
@@ -6,6 +7,7 @@ from uuid import uuid4
 from fastapi import Depends, FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 
+from .agent.worker import Worker
 from .api.config import Settings
 from .api.routers import health, login, session
 from .database.connection import create_pool
@@ -22,6 +24,8 @@ def get_settings() -> Settings:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     pool = create_pool()
+    queue = asyncio.Queue()
+    workers = []
     try:
         await pool.open(wait=True)
         app.state.pool = pool
@@ -30,8 +34,23 @@ async def lifespan(app: FastAPI):
         app.state.session_dao = SessionDao(pool, app.state.message_dao)
         app.state.settings = Settings()
         # app.state.session_hash = {}
+        app.state.job_queue = queue
+
+        for _ in range(4):
+            workers.append(asyncio.create_task(Worker(app.state.job_queue).run()))
         yield
     finally:
+        # Stop all workers
+        for worker in workers:
+            worker.cancel()
+        await asyncio.gather(*workers)
+
+        # Clear all jobs from queue
+        while not app.state.job_queue.empty():
+            job = await app.state.job_queue.get()
+            job.response_future.cancel()
+            app.state.job_queue.task_done()
+
         await pool.close()
 
 

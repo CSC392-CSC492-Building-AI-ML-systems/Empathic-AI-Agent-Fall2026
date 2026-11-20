@@ -26,7 +26,7 @@ class UserDao:
         """
         try:
             async with self.pool.connection() as connection, connection.cursor() as cursor:
-                await cursor.execute(sql,(user_id, name, email, password),)
+                await cursor.execute(sql,(user_id, name, email, password,))
         except Error:
             return None
 
@@ -102,7 +102,7 @@ class UserDao:
         """
         try:
             async with self.pool.connection() as connection, connection.cursor() as cursor:
-                await cursor.execute(sql,(name, email, password, user_id),)
+                await cursor.execute(sql,(name, email, password, user_id,))
                 row = await cursor.fetchone()
 
         except Error:
@@ -138,6 +138,18 @@ class UserDao:
             memories[row[0]] = row[1]
         return memories
 
+    async def remove_memory(self, user_id: UUID, memory_key: str) -> None:
+        """Removes a memory entry"""
+        if not memory_key.strip():
+            raise ValueError("memory_key must not be empty")
+
+        sql = """
+            DELETE FROM user_memories
+            WHERE user_id = %s AND memory_key = %s
+        """
+        async with self.pool.connection() as connection, connection.cursor() as cursor:
+            await cursor.execute(sql, (user_id, memory_key,))
+
 
     async def upsert_memory(self, user_id: UUID, memory_key: str, content: str) -> None:
         """Save a memory, replacing the content if the user's key already exists"""
@@ -151,4 +163,4 @@ class UserDao:
             SET content = EXCLUDED.content
         """
         async with self.pool.connection() as connection, connection.cursor() as cursor:
-            await cursor.execute(sql, (user_id, memory_key, content))
+            await cursor.execute(sql, (user_id, memory_key, content,))

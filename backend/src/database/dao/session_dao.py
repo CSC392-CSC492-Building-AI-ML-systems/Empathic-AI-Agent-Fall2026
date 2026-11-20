@@ -23,17 +23,67 @@ class SessionDao:
         session_id = uuid4()
         async with self.pool.connection() as connection, connection.cursor() as cursor:
             await cursor.execute(
-                "INSERT INTO sessions (id, user_id, name, context, tool_context, terminated) VALUES (%s, %s, %s, %s, %s, %s)",
-                (session_id, user_id, name, context, tool_context, terminated),
+                "INSERT INTO sessions (id, user_id, name, terminated) VALUES (%s, %s, %s, %s)",
+                (session_id, user_id, name, terminated),
             )
+            await cursor.execute(
+                "INSERT INTO message_context (session_id, context) VALUES (%s, %s)",
+                (session_id, context),
+            )
+            if tool_context:
+                await cursor.execute(
+                    "INSERT INTO tool_context (session_id, context) VALUES (%s, %s)",
+                    (session_id, tool_context),
+                )
         return session_id
+
+    async def add_tool_context(self, session_id: UUID, context: str) -> None:
+        """Append one tool result to a session."""
+        sql = "INSERT INTO tool_context (session_id, context) VALUES (%s, %s)"
+
+        async with self.pool.connection() as connection, connection.cursor() as cursor:
+            await cursor.execute(sql, (session_id, context))
+
+    async def get_tool_context(self, session_id: UUID) -> list[str]:
+        """Return the session's tool entries in ID order."""
+        sql = """
+            SELECT context FROM tool_context
+            WHERE session_id = %s AND context IS NOT NULL
+            ORDER BY id
+        """
+
+        async with self.pool.connection() as connection, connection.cursor() as cursor:
+            await cursor.execute(sql, (session_id,))
+            return [row[0] for row in await cursor.fetchall()]
+
+    async def get_message_context(self, session_id: UUID) -> str | None:
+        """Return the stored message context, or None if there is none."""
+        sql = "SELECT context FROM message_context WHERE session_id = %s"
+
+        async with self.pool.connection() as connection, connection.cursor() as cursor:
+            await cursor.execute(sql, (session_id,))
+            row = await cursor.fetchone()
+        return row[0] if row is not None else None
+
+    async def upsert_message_context(self, session_id: UUID, context: str) -> None:
+        """Store or replace the session's message context."""
+        sql = """
+            INSERT INTO message_context (session_id, context) VALUES (%s, %s)
+            ON CONFLICT (session_id)
+            DO UPDATE SET context = EXCLUDED.context
+        """
+
+        async with self.pool.connection() as connection, connection.cursor() as cursor:
+            await cursor.execute(sql, (session_id, context))
 
     async def get_session(self, session_id: UUID) -> Session:
         """Form and return a Session object given session id"""
 
         sql = """
-            SELECT created_at, context, tool_context, terminated, user_id, name FROM sessions
-            WHERE id = %s
+            SELECT s.created_at, s.terminated, s.user_id, s.name, m.context
+            FROM sessions AS s
+            LEFT JOIN message_context AS m ON m.session_id = s.id
+            WHERE s.id = %s
         """
         async with self.pool.connection() as connection, connection.cursor() as cursor:
             await cursor.execute(sql, (session_id,))
@@ -41,18 +91,15 @@ class SessionDao:
         if row is None:
             raise KeyError(f"Session {session_id} does not exist")
 
-        session = Session(session_id=session_id,
-                          created_at=row[0],
-                          context=row[1],
-                          tool_context=row[2],
-                          terminated=row[3],
-                          user_id=row[4],
-                          name=row[5],
-                          messages=[])
-        messages = await self.message_dao.get_messages(session_id)
-        for message in messages:
-            session.add_message(message)
-        return session
+        return Session(
+            session_id=session_id,
+            created_at=row[0],
+            terminated=row[1],
+            user_id=row[2],
+            name=row[3],
+            message_context=row[4],
+            messages=await self.message_dao.get_messages(session_id),
+        )
 
     async def get_session_ids(self, user_id: UUID) -> list[tuple[UUID, str]]:
         """Return a user's session IDs in creation order."""
