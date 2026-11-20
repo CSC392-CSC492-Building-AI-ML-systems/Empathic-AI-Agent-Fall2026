@@ -1,43 +1,37 @@
 services:
-  db:
-    image: postgres:18.6-alpine
-    container_name: postgres
-    env_file: .env
-    ports:
-      - "127.0.0.1:${POSTGRES_PORT}:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+  # db:
+  #   image: postgres:18.6-alpine
+  #   container_name: postgres
+  #   env_file: .env
+  #   ports:
+  #     - "127.0.0.1:${POSTGRES_PORT}:5432"
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+  #     interval: 5s
+  #     timeout: 5s
+  #     retries: 5
 
-  migrate:
-    build: ./backend
-    container_name: migrate
-    env_file: .env
-    environment:
-      DB_HOST: db
-      DB_PORT: 5432
-    command: python -m src.database.migrate
-    depends_on:
-      db:
-        condition: service_healthy
+  # migrate:
+  #   build: ./backend
+  #   container_name: migrate
+  #   env_file: .env
+  #   command: python -m src.database.migrate
+  #   # depends_on:
+  #   #   db:
+  #   #     condition: service_healthy
 
   backend:
     build: ./backend
     env_file: .env
-    environment:
-      DB_HOST: db
-      DB_PORT: 5432
     ports:
       - "127.0.0.1:8000:8000"
-    depends_on:
-      db:
-        condition: service_healthy
-      migrate:
-        condition: service_completed_successfully
+    # depends_on:
+      # db:
+      #   condition: service_healthy
+      # migrate:
+      #   condition: service_completed_successfully
 
 volumes:
   postgres_data:
