@@ -32,7 +32,8 @@ async def lifespan(app: FastAPI):
         app.state.user_dao = UserDao(pool)
         app.state.message_dao = MessageDao(pool)
         app.state.session_dao = SessionDao(pool, app.state.message_dao)
-        app.state.session_hash = {}
+        app.state.settings = Settings()
+        # app.state.session_hash = {}
         app.state.job_queue = queue
 
         for _ in range(4):
@@ -74,5 +75,5 @@ async def root(
     response: Response
     ):
     uuid = str(uuid4())
-    response.set_cookie(key="Cookie", value=uuid)
-    return {"cookie": uuid}
+    response.set_cookie(key="kms", value=uuid)
+    return {"kms": uuid}
