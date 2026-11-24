@@ -3,7 +3,7 @@ import { ChatBubble } from './ChatBubble';
 import { AgentThinking } from './AgentThinking';
 import { MessageMenu } from './MessageMenu';
 
-export function ChatThread({ messages, isTyping, onBranch, canBranch = false }) {
+export function ChatThread({ messages, isTyping, onBranch, canBranch = false, samPFP = null }) {
 	const messagesEndRef = useRef(null);
 	// { x, y, index } of the bubble that was right clicked
 	const [menu, setMenu] = useState(null);
@@ -48,6 +48,7 @@ export function ChatThread({ messages, isTyping, onBranch, canBranch = false }) 
 					sender={msg.sender} 
 					text={msg.text} 
 					timestamp={msg.timestamp} 
+					samPFP={samPFP}
 					onContextMenu={onBranch ? (e) => openMenu(e, index) : undefined}
 				/>
 			))}

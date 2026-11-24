@@ -33,6 +33,7 @@ function App() {
 
 	const BASE = "http://localhost:8000";
 	const [theme, setTheme] = useState('light');
+	const [samPFP, setSamPFP] = useState(null);
 
 	useEffect(() => {
 		document.documentElement.classList.toggle('dark', theme === 'dark');
@@ -473,6 +474,8 @@ function App() {
 								onBackToChat={() => setActiveTab('chat')} 
 								theme={theme}
 								onToggleTheme={handleToggleTheme}
+								samPFP={samPFP}
+								onSelectSamPFP={setSamPFP}
 							/>
 						) : (
 							<div className="flex-1 flex flex-col h-full justify-between overflow-hidden">
@@ -492,6 +495,7 @@ function App() {
 										isTyping={isTyping} 
 										onBranch={handleBranch}
 										canBranch={!isTyping}
+										samPFP={samPFP}
 									/>
 								</div>
 								)}
