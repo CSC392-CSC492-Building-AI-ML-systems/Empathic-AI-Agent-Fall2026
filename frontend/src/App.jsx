@@ -1,5 +1,5 @@
 // import { useState, useEffect, useRef } from 'react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Sidebar } from './components/sidebar/Sidebar';
 import { Input } from './components/buttons/Input';
 import { InitialMood } from './components/chat/InitialMood';
@@ -32,6 +32,15 @@ function App() {
 	const isAuthCallback = window.location.pathname === '/auth/callback';
 
 	const BASE = "http://localhost:8000";
+	const [theme, setTheme] = useState('light');
+
+	useEffect(() => {
+		document.documentElement.classList.toggle('dark', theme === 'dark');
+	}, [theme]);
+
+	const handleToggleTheme = () => {
+		setTheme((prev) => (prev === 'light' ? 'dark' : 'light'));
+	};
 
 	// Get the current Supabase access token and prepare request headers
 	const getAuthHeaders = async () => {
@@ -417,7 +426,7 @@ function App() {
 
 
   	return (
-    	<div className="flex h-screen w-full bg-[#f6f7f5] text-gray-800 font-sans">
+    	<div className="flex h-screen w-full bg-[#f6f7f5] dark:bg-slate-900 text-gray-800 dark:text-slate-100 font-sans transition-colors duration-200">
 
 			{isAuthCallback ? (
 				<AuthCallback
@@ -462,14 +471,16 @@ function App() {
 						) : activeTab === 'settings' ? (
 							<SettingsView 
 								onBackToChat={() => setActiveTab('chat')} 
+								theme={theme}
+								onToggleTheme={handleToggleTheme}
 							/>
 						) : (
 							<div className="flex-1 flex flex-col h-full justify-between overflow-hidden">
 								{messages.length === 0 ? (
 								<div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-8">
 									<div className="space-y-3">
-									<h1 className="text-4xl font-extrabold text-gray-900">Welcome</h1>
-									<p className="text-2xl text-gray-700">How was your day ?</p>
+									<h1 className="text-4xl font-extrabold text-gray-900 dark:text-slate-100">Welcome</h1>
+									<p className="text-2xl text-gray-700 dark:text-slate-300">How was your day ?</p>
 									</div>
 									<InitialMood onSelectMood={handleMoodSelect} />
 								</div>

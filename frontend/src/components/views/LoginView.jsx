@@ -397,7 +397,7 @@ export function LoginView({ onLoginSuccess }) {
     return (
         <div className="flex-1 flex flex-col h-full justify-between overflow-hidden">
             <div className="flex items-center justify-between max-w-4xl w-full mx-auto px-6 pt-6 shrink-0">
-                <h1 className="text-center text-3xl font-bold text-gray-900 mb-1">Login</h1>
+                <h1 className="text-center text-3xl font-bold text-gray-900 dark:text-slate-100mb-1">Login</h1>
                 {status !== '' && status !== 'done' && (
                     <div className="flex justify-end px-6 pt-2 shrink-0">
                         <button
