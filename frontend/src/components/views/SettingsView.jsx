@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 
 const makeEmojiAvatar = (emoji, bgColor) =>
 	`data:image/svg+xml;utf8,${encodeURIComponent(
@@ -26,7 +26,6 @@ const PFP_PRESETS = [
 // for choosing pfp's for sam or the user
 function PFPChooser({ 
 	title, 
-	description, 
 	currentPFP, 
 	onSelectPFP, 
 	resetLabel = 'Reset to default icon'
@@ -121,10 +120,6 @@ export function SettingsView({
     const isDark = theme === 'dark';
 	const [nameInput, setNameInput] = useState(samName);
 	const [savedNotice, setSavedNotice] = useState(false);
-
-	useEffect(() => {
-		setNameInput(samName);
-	}, [samName]);
 
 	const handleNameSubmit = (e) => {
 		e.preventDefault();

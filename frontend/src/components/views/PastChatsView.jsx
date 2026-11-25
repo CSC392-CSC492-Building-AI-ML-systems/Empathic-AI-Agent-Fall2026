@@ -1,4 +1,3 @@
-import { ArrowRightIcon } from '../buttons/Icons';
 // import { PAST_CHATS_MOCK } from '../../mockChats/pastChatsTemp';
 {/* temporary to show what past chats can be like ^^ */}
 
