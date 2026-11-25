@@ -1,6 +1,15 @@
 import { HeartIcon, UserIcon } from '../buttons/Icons';
 
-export function ChatBubble({ sender, text, timestamp, samPFP = null, onContextMenu }) {
+export function ChatBubble({ 
+	sender, 
+	text, 
+	timestamp, 
+	samPFP = null, 
+	userPFP = null, 
+	samName = 'Sam', 
+	username = 'User',
+	onContextMenu 
+	}) {
 	const isBot = sender === 'sam';
 
 	// adding in a place for time
@@ -33,11 +42,17 @@ export function ChatBubble({ sender, text, timestamp, samPFP = null, onContextMe
 							) : (
 								<HeartIcon />
 							)
+						) : userPFP ? (
+								<img
+									src={userPFP}
+									alt="User"
+									className="w-5 h-5 rounded-full object-cover shrink-0"
+								/>
 						) : (
 							<UserIcon />
 				)}
 
-				<span>{isBot ? 'SAM' : 'USER'}</span>
+				<span>{isBot ? samName : username}</span>
 				</div>
 				{formattedTime && (
 					<span className="text-[10px] text-gray-400 dark:text-slate-400 font-medium">

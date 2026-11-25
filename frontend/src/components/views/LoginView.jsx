@@ -146,8 +146,10 @@ export function LoginView({ onLoginSuccess }) {
                 }
 
                 const userId = loginData.user.id;
+                const name = extractUserName(loginData.user);
+                setUsername(name);
                 setUserId(userId);
-                onLoginSuccess(userId, []);
+                onLoginSuccess(userId, [], name);
 
                 await agentMsg("Ok :D I have all the info I need now. You are all logged in now!");
                 console.log("-----------------completed login---------------------");
@@ -366,6 +368,12 @@ export function LoginView({ onLoginSuccess }) {
             return null;
         }
     };
+
+    const extractUserName = (user) =>
+        user?.user_metadata?.name ||
+        user?.user_metadata?.full_name ||
+        username ||
+        'User';
 
     const resetAllFields = async() => {
         setUsername('');

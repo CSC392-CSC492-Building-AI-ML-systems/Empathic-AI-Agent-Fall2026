@@ -2,12 +2,13 @@ import { ArrowRightIcon } from '../buttons/Icons';
 // import { PAST_CHATS_MOCK } from '../../mockChats/pastChatsTemp';
 {/* temporary to show what past chats can be like ^^ */}
 
-export function PastChatsView({onSelectChat, sessions}) {
+export function PastChatsView({onSelectChat, sessions, onDeleteChat}) {
 
 	let pastChatsList;
 	if (!sessions || sessions.length === 0) {
 		pastChatsList = <p className="text-gray-400 text-sm">No past chats found.</p>;
-	} else {
+	} 
+	else {
 		pastChatsList = sessions.map((session) => (
 			<div
 				key={session.session_id}
@@ -20,9 +21,16 @@ export function PastChatsView({onSelectChat, sessions}) {
 					</h3>
 					<p className="text-xs text-gray-500 dark:text-slate-400">view this chat</p>
 				</div>
-				<div className="p-2 rounded-full bg-gray-50 dark:bg-slate-700/70 text-gray-600 dark:*:text-slate-300">
-					<ArrowRightIcon />
-				</div>
+				<button
+					type="button"
+					onClick={(e) => {
+						e.stopPropagation(); // Prevent triggering the onSelectChat
+						onDeleteChat(session.session_id);
+					}}
+					className="ml-4 w-10 h-10 flex items-center justify-center rounded-xl text-base font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 hover:text-red-700 dark:hover:text-red-300 transition-colors cursor-pointer shrink-0"
+				>
+					X
+				</button>
 			</div>
 		));
 	}

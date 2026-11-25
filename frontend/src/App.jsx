@@ -18,6 +18,9 @@ function App() {
 	const [inputVal, setInputVal] = useState('');
 	const [sessionId, setSessionId] = useState(null);
 	const [sessions, setSessions] = useState([]);
+	// userId = null -> not logged in
+	const [userId, setUserId] = useState(null);
+	const [username, setUsername] = useState('User');
 	// IF IMPLEMENT GUEST STATE
 	// const sessionFetched = useRef(false);
 
@@ -25,15 +28,18 @@ function App() {
 	const waitOneSecond = () => new Promise((resolve) => setTimeout(resolve, 1000));
 	const [isTyping, setIsTyping] = useState(false);
 
-	// userId = null -> not logged in
-	const [userId, setUserId] = useState(null);
-
 	// for authentication
 	const isAuthCallback = window.location.pathname === '/auth/callback';
 
 	const BASE = "http://localhost:8000";
+
+	// for personalization/customization
 	const [theme, setTheme] = useState('light');
 	const [samPFP, setSamPFP] = useState(null);
+	const [userPFP, setUserPFP] = useState(null);
+	const [samName, setSamName] = useState('SAM');
+	
+
 
 	useEffect(() => {
 		document.documentElement.classList.toggle('dark', theme === 'dark');
@@ -357,6 +363,7 @@ function App() {
 
 			// Clear frontend state
 			setUserId(null);
+			setUsername('User');
 			setMessages([]);
 			setSessionId(null);
 			setSessions([]);
@@ -425,6 +432,29 @@ function App() {
 		}
     };
 
+	const handleDeleteChat = async (sessionIdToDelete) => {
+		try {
+			const deleteResponse = await fetch(`${BASE}/session/${sessionIdToDelete}/delete`, {
+				method: 'POST',
+				headers: await getAuthHeaders(),
+			});
+			
+			if (!deleteResponse.ok) {
+				console.log("failed to delete session");
+				return;
+			}
+		}
+		catch (error) {
+			console.log(error);
+			console.log("error in deleting session");
+		}
+
+		// update the sessions state to remove the deleted session
+		setSessions((prevSessions) =>
+			prevSessions.filter((session) => session.session_id !== sessionIdToDelete)
+		);
+	};
+
 
   	return (
     	<div className="flex h-screen w-full bg-[#f6f7f5] dark:bg-slate-900 text-gray-800 dark:text-slate-100 font-sans transition-colors duration-200">
@@ -442,10 +472,14 @@ function App() {
 			) : activeTab === 'login' ? (
 				<LoginView
 					onBackToChat={() => setActiveTab('chat')}
-					onLoginSuccess={(loginId, loginSessions) => {
+					onLoginSuccess={(loginId, loginSessions, loginUsername) => {
 						setUserId(loginId);
 						// used for retrieving past chats
 						setSessions(loginSessions);
+						if (loginUsername) {
+							setUsername(loginUsername);
+						}
+						window.history.replaceState({}, '', '/');
 						console.log(`this is the userId: ${loginId}`);
 						console.log(`these are all the sessions associated with this user: ${loginSessions}`);
 						setTimeout(() => setActiveTab('chat'), 2000);
@@ -468,6 +502,7 @@ function App() {
 							<PastChatsView 
 								onSelectChat={handleSelectPastChat} 
 								sessions={sessions}
+								onDeleteChat={handleDeleteChat}
 							/>
 						) : activeTab === 'settings' ? (
 							<SettingsView 
@@ -476,6 +511,10 @@ function App() {
 								onToggleTheme={handleToggleTheme}
 								samPFP={samPFP}
 								onSelectSamPFP={setSamPFP}
+								userPFP={userPFP}
+								onSelectUserPFP={setUserPFP}
+								samName={samName}
+								onChangeSamName={setSamName}
 							/>
 						) : (
 							<div className="flex-1 flex flex-col h-full justify-between overflow-hidden">
@@ -496,6 +535,9 @@ function App() {
 										onBranch={handleBranch}
 										canBranch={!isTyping}
 										samPFP={samPFP}
+										userPFP={userPFP}
+										samName={samName}
+										username={username}
 									/>
 								</div>
 								)}

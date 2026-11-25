@@ -9,6 +9,6 @@ export default defineConfig({
 		react(), 
 		tailwindcss()
 	],
-	envDir: resolve(__dirname, '../')
+	envDir: resolve(import.meta.dirname, '../')
 
 })
