@@ -1,14 +1,14 @@
 import asyncio
 import os
+from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from openrouter import OpenRouter
 from pydantic import BaseModel
 
-from ..dependencies.auth import get_current_user
-from uuid import UUID
 from ...agent.jobs import GenericJob
+from ..dependencies.auth import get_current_user
 
 
 class Message(BaseModel):
@@ -26,19 +26,16 @@ router = APIRouter(
 async def start_conversation_state(
         request: Request,
         message: Message,
-        user_id: UUID = Depends(get_current_user)
+        user_id: Annotated[UUID, Depends(get_current_user)]
 ):
     """starts a conversation with a message. Returns the agent's response and session id."""
     session_dao = request.app.state.session_dao
-    message_dao = request.app.state.message_dao
-    user_dao = request.app.state.user_dao
 
     # make session name
     session_name = await get_session_name(message.message)
 
-    async with request.app.state.pool.connection() as conn:
-        async with conn.cursor() as cursor:
-            await cursor.execute("""
+    async with request.app.state.pool.connection() as conn, conn.cursor() as cursor:
+        await cursor.execute("""
                                  SELECT id, email
                                  FROM public.users
                                  WHERE id = %s
@@ -62,6 +59,7 @@ async def start_conversation_state(
         message=message.message,
     )
     await request.app.state.job_queue.put(job)
+    #todo: Catch job RuntimeError
     response = await response_future
 
     return {"session_id": session_id, "response": response}
@@ -71,7 +69,7 @@ async def start_conversation_state(
 async def get_conversation_state(
         session_id: UUID,
         request: Request,
-        user_id: UUID = Depends(get_current_user)
+        user_id: Annotated[UUID, Depends(get_current_user)]
 ):
     """ returns the session formatted for the frontend."""
     session_dao = request.app.state.session_dao
@@ -89,12 +87,10 @@ async def send_conversation_state(
         request: Request,
         session_id: UUID,
         message: Message,
-        user_id: UUID = Depends(get_current_user)
+        user_id: Annotated[UUID, Depends(get_current_user)]
 ):
     """sends a message to session with {session_id}. Returns the agent's response."""
-    message_dao = request.app.state.message_dao
     session_dao = request.app.state.session_dao
-    user_dao = request.app.state.user_dao
 
     # checks if session belongs to user
     session = await session_dao.get_session(session_id)
@@ -112,6 +108,7 @@ async def send_conversation_state(
         message=message.message,
     )
     await request.app.state.job_queue.put(job)
+    #todo: Catch job RuntimeError
     response = await response_future
 
     # respond
@@ -122,7 +119,7 @@ async def send_conversation_state(
 async def delete_session(
         request: Request,
         session_id: UUID,
-        user_id: UUID = Depends(get_current_user)
+        user_id: Annotated[UUID, Depends(get_current_user)]
 ):
     """ deletes the session with the given session id. """
     session_dao = request.app.state.session_dao
@@ -138,7 +135,7 @@ async def delete_session(
 @router.get("/get_sessions")
 async def get_session(
         request: Request,
-        user_id: UUID = Depends(get_current_user)
+        user_id: Annotated[UUID, Depends(get_current_user)]
 ):
     """returns a list of session id and names according to the cookie of a logged in user.
        raises error if theres no valid user login."""
@@ -155,7 +152,7 @@ async def get_session(
 
 @router.get("/test-auth")
 async def test_auth(
-        user_id: UUID = Depends(get_current_user)
+        user_id: Annotated[UUID, Depends(get_current_user)]
 ):
     return {"authenticated": True, "user_id": str(user_id)}
 

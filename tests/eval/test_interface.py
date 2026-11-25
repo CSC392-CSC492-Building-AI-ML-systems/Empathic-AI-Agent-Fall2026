@@ -56,8 +56,6 @@ def test_history_from_database_fits_turn() -> None:
     now = datetime.now(UTC)
     session = Session(session_id=uuid4(),
                       created_at=now,
-                      context="",
-                      tool_context="",
                       terminated=False,
                       name="",
                       messages=[],

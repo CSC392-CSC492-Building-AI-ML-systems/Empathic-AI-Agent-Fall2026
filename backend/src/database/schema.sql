@@ -1,8 +1,7 @@
 CREATE TABLE users (
-    id UUID PRIMARY KEY,
+    id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     name TEXT,
-    email TEXT NOT NULL UNIQUE,
-    password TEXT NOT NULL
+    email TEXT UNIQUE
 );
 
 CREATE TABLE sessions (
@@ -11,7 +10,7 @@ CREATE TABLE sessions (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
 
     user_id UUID NOT NULL,
-    terminated BOOLEAN DEFAULT false,
+    terminated BOOLEAN NOT NULL DEFAULT false,
 
     FOREIGN KEY (user_id) REFERENCES users(id)
         ON DELETE CASCADE
@@ -59,3 +58,4 @@ CREATE TABLE tool_context (
 CREATE INDEX sessions_user_id_idx ON sessions (user_id);
 CREATE INDEX messages_idx ON messages (session_id, id);
 CREATE INDEX tool_context_session_id_idx ON tool_context (session_id, id);
+
