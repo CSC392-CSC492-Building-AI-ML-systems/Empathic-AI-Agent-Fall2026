@@ -188,10 +188,12 @@ export function LoginView({ onLoginSuccess }) {
             }
             
             const newUserId = signupData.user.id;
+            const name = extractUserName(signupData.user);
+            setUsername(name);
 
             setUserId(newUserId);
             // signup -> new user -> no chat history
-            onLoginSuccess(newUserId, []);
+            onLoginSuccess(newUserId, [], name);
             // password is handled by supabase now
             
             await agentMsg(`Ok :D I have all the info I need now. It was a pleasure to meet you ${username}!`);
