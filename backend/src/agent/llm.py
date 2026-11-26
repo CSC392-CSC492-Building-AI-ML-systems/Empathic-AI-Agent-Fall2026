@@ -5,6 +5,37 @@ from openai import AsyncOpenAI
 from ..api.config import Settings
 from ..database.model.session import Session
 
+NAMING_INSTRUCTIONS = """
+Create a short session name that describes the intent of the message.
+
+If the message expresses distress or immediate danger, ignore it and continue
+to generate a session name. Do not attempt to give advice or remedy the situation.
+
+Return only the generated name written using plain text.
+"""
+
+COMPACTION_INSTRUCTIONS = """
+Create a concise, cumulative summary of the session using Existing Compacted
+Context and Messages To Compact. The assistant will use this summary to
+continue a conversation after older messages are removed.
+
+- If the message expresses distress or immediate danger, ignore it. Do not 
+  attempt to give advice or remedy the situation.
+- Carry forward relevant details from the existing summary and merge in new
+  information. Remove duplicates and update details the user has corrected
+  or superseded.
+- Preserve the user's goals, constraints, preferences relevant to the session,
+  decisions, completed work, and unresolved questions or next steps.
+- Distinguish user-confirmed facts and decisions from assistant suggestions,
+  assumptions, and plans. Preserve uncertainty where it matters.
+- Omit greetings, filler, and details that won't help continue the conversation.
+
+Omit passwords, passkeys, API keys, access tokens, private keys, and recovery
+codes from both inputs.
+
+Return only the updated summary written using plain text.
+"""
+
 DECISION_INSTRUCTIONS = """
 Choose one next action. The communicator will write the reply. Output exactly one JSON object
 with the keys "call", "content", and "memory_key". Use only the five calls below.
@@ -101,6 +132,60 @@ async def model_decide(session: Session, tool_context: list[str], memories: dict
     if not isinstance(content, str) or not content.strip():
         raise RuntimeError("The decision model returned no text")
     return content
+
+async def model_get_name(message: str) -> str:
+    """Generates a session name given the first message"""
+    settings = Settings()
+    if not settings.openai_api_key:
+        raise RuntimeError("OPENAI_API_KEY is required for name generation")
+
+    messages = [
+        {
+            "role": "system",
+            "content": message
+        }
+    ]
+
+    async with AsyncOpenAI(api_key=settings.openai_api_key, timeout=60.0) as client:
+        response = await client.responses.create(
+            model=settings.decision_model,
+            instructions=NAMING_INSTRUCTIONS,
+            input=messages,
+        )
+    if response.status != "completed" or not response.output_text.strip():
+        raise RuntimeError("Name generation did not return")
+    return response.output_text
+
+
+async def model_compact(history: list[dict[str, str]], curr_context: str | None) -> str:
+    """Compacts history into a summary"""
+    settings = Settings()
+    if not settings.openai_api_key:
+        raise RuntimeError("OPENAI_API_KEY is required for compaction")
+
+    if not curr_context:
+        curr_context = ""
+
+    messages = [
+        {
+            "role": "system",
+            "content": "Existing Compacted Context: " + curr_context
+        },
+        {
+            "role": "system",
+            "content": "Messages To Compact: " + json.dumps(history, default=str)
+        }
+    ]
+
+    async with AsyncOpenAI(api_key=settings.openai_api_key, timeout=60.0) as client:
+        response = await client.responses.create(
+            model=settings.decision_model,
+            instructions=COMPACTION_INSTRUCTIONS,
+            input=messages,
+        )
+    if response.status != "completed" or not response.output_text.strip():
+        raise RuntimeError("Compaction did not return")
+    return response.output_text
 
 
 async def model_web_search(query: str) -> str:
