@@ -1,12 +1,26 @@
 // import { PAST_CHATS_MOCK } from '../../mockChats/pastChatsTemp';
 {/* temporary to show what past chats can be like ^^ */}
 
-export function PastChatsView({onSelectChat, sessions, onDeleteChat}) {
+export function PastChatsView({onSelectChat, sessions, onDeleteChat, isLoading = false}) {
 
 	let pastChatsList;
-	if (!sessions || sessions.length === 0) {
-		pastChatsList = <p className="text-gray-400 text-sm">No past chats found.</p>;
+	if (isLoading) {
+		pastChatsList = (
+			<div className="space-y-4">
+				{[1, 2, 3].map((n) => (
+					<div
+						key={n}
+						className="w-full h-20 bg-white/60 dark:bg-slate-800/40 rounded-2xl border border-gray-100 dark:border-slate-700/60 animate-pulse"
+					/>
+				))}
+			</div>
+		);
 	} 
+	
+	else if (!sessions || sessions.length === 0) {
+		pastChatsList = <p className="text-gray-400 text-sm">No past chats found.</p>;
+	}
+	
 	else {
 		pastChatsList = sessions.map((session) => (
 			<div

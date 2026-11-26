@@ -28,6 +28,7 @@ function App() {
 	// to simulate thinking -> more empathetic (?)
 	const waitOneSecond = () => new Promise((resolve) => setTimeout(resolve, 1000));
 	const [isTyping, setIsTyping] = useState(false);
+	const [isLoadingSessions, setIsLoadingSessions] = useState(false);
 
 	// for authentication
 	const isAuthCallback = window.location.pathname === '/auth/callback';
@@ -382,7 +383,7 @@ function App() {
 		// save current session
 		// saveCurrentSession();
 		// get all session when im about to open all the past chats
-		getAllSessions();
+		getAllSessions({ showLoading: sessions.length === 0 });
 		setActiveTab('past_chats');
 	};
 
@@ -444,7 +445,10 @@ function App() {
 	};
 
 	// retrieve all the sessions from the backend
-	const getAllSessions = async () => {
+	const getAllSessions = async ({ showLoading = true } = {}) => {
+		if (showLoading) {
+			setIsLoadingSessions(true);
+		}
 		try {
 
 			const sessionsResponse = await fetch(`${BASE}/session/get_sessions`, {
@@ -458,11 +462,16 @@ function App() {
 			}
 
 			const allSessions = await sessionsResponse.json();
-			setSessions(allSessions.sessions);
+			setSessions(allSessions.sessions ?? []);
 		}
 		catch (error) {
 			console.log(error);
 			console.log("error in retrieving all sessions");
+		}
+		finally {
+			if (showLoading) {
+				setIsLoadingSessions(false);
+			}
 		}
     };
 
@@ -537,6 +546,7 @@ function App() {
 								onSelectChat={handleSelectPastChat} 
 								sessions={sessions}
 								onDeleteChat={handleDeleteChat}
+								isLoading={isLoadingSessions}
 							/>
 						) : activeTab === 'settings' ? (
 							<SettingsView 
