@@ -9,6 +9,7 @@ import { LoginView } from './components/views/LoginView';
 import { SettingsView } from './components/views/SettingsView';
 import { supabase } from './lib/supabaseClient';
 import { AuthCallback } from './components/views/AuthCallback';
+import SpeechRecognition, { useSpeechRecognition } from 'react-speech-recognition';
 import './App.css';
 
 function App() {
@@ -38,6 +39,32 @@ function App() {
 	const [samPFP, setSamPFP] = useState(null);
 	const [userPFP, setUserPFP] = useState(null);
 	const [samName, setSamName] = useState('SAM');
+
+	// for speech to text
+	const {
+		transcript,
+		listening,
+		resetTranscript,
+		browserSupportsSpeechRecognition,
+	} = useSpeechRecognition();
+
+	useEffect(() => {
+	if (listening) {
+		setInputVal(`${baseTextRef.current}${transcript}`);
+	}
+}, [transcript, listening]);
+
+	const handleToggleMic = () => {
+		if (listening) {
+			SpeechRecognition.stopListening();
+		} 
+		else {
+			const trimmedBase = inputVal.trim();
+			baseTextRef.current = trimmedBase ? `${trimmedBase} ` : '';
+			resetTranscript();
+			SpeechRecognition.startListening({ continuous: true, language: 'en-US' });
+		}
+	};
 	
 
 
@@ -179,6 +206,9 @@ function App() {
 	// save curr session to sessions if there are messages
 	// brings back to og state
 	const handleNewChat = () => {
+		if (listening) {
+			SpeechRecognition.stopListening();
+		}
 		// remove save current session if no use
 		saveCurrentSession();
     	setActiveTab('chat');
@@ -230,6 +260,10 @@ function App() {
 
     	const trimmedInput = inputVal.trim();
     	if (!trimmedInput) return;
+
+		if (listening) {
+			SpeechRecognition.stopListening();
+		}
 
 		const userMsg = { 
 			id: Date.now(), 
@@ -543,14 +577,46 @@ function App() {
 								)}
 
 								<div className="p-6 max-w-4xl w-full mx-auto">
-								<Input
-									value={inputVal}
-									onChange={(e) => setInputVal(e.target.value)}
-									onSubmit={handleSubmit}
-									disabled={isTyping}
-									placeholder={messages.length === 0 ? "What is your question" : "Reply..."}
-									
-								/>
+									<Input
+										value={inputVal}
+										onChange={(e) => {
+											if (listening) SpeechRecognition.stopListening();
+											setInputVal(e.target.value);
+										}}
+										onSubmit={handleSubmit}
+										disabled={isTyping}
+										placeholder={messages.length === 0 ? "What is your question" : "Reply..."}
+									>
+										{browserSupportsSpeechRecognition && (
+											<button
+												type="button"
+												onClick={handleToggleMic}
+												disabled={isTyping}
+												aria-label={listening ? 'Stop voice input' : 'Start voice input'}
+												title={listening ? 'Stop listening' : 'Speak to type'}
+												className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
+													listening
+														? 'bg-red-100 text-red-600 dark:bg-red-950/60 dark:text-red-400 animate-pulse'
+														: 'text-gray-500 hover:bg-gray-100 dark:text-slate-400 dark:hover:bg-slate-700/60'
+												}`}
+											>
+												<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+													<path
+														strokeLinecap="round"
+														strokeLinejoin="round"
+														strokeWidth="2"
+														d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"
+													/>
+													<path
+														strokeLinecap="round"
+														strokeLinejoin="round"
+														strokeWidth="2"
+														d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8"
+													/>
+												</svg>
+											</button>
+										)}
+									</Input>
 								</div>
 							</div>
 						)}

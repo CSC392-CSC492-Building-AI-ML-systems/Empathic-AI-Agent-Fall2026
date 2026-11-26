@@ -1,6 +1,6 @@
 {
   "overrides": {
-  "minimatch": "^11.0.1"
+    "minimatch": "^11.0.1"
   },
   "name": "sam",
   "private": true,
@@ -16,6 +16,10 @@
     "@tailwindcss/vite": "^4.3.3",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
+    "react-markdown": "^10.1.0",
+    "react-speech-recognition": "^4.0.1",
+    "regenerator-runtime": "^0.14.1",
+    "remark-gfm": "^4.0.1",
     "tailwindcss": "^4.3.3"
   },
   "devDependencies": {
