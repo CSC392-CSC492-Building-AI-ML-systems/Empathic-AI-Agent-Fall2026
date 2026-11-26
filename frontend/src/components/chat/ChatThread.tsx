@@ -17,69 +17,87 @@ interface ChatThreadProps {
 
 interface MenuState { x: number; y: number; index: number }
 
-export function ChatThread({ 
-	messages, 
-	isTyping, 
-	onBranch, 
-	canBranch = false, 
-	samPFP = null, 
-	userPFP = null, 
-	samName = 'Sam',
-	username = 'User' 
-	}: ChatThreadProps) {
+// roughly the menu's min width (min-w-48), used to line it up under the "..." button
+const MENU_WIDTH = 192;
 
-	const messagesEndRef = useRef<HTMLDivElement>(null);
+export function ChatThread({
+	messages,
+	isTyping,
+	onBranch,
+	canBranch = false,
+	samPFP = null,
+	userPFP = null,
+	samName = 'Sam',
+	username = 'You',
+}: ChatThreadProps) {
+
+	const containerRef = useRef<HTMLDivElement>(null);
 	const [menu, setMenu] = useState<MenuState | null>(null);
 
+	// scroll ONLY this list. scrollIntoView also scrolls the overflow-hidden parents,
+	// which pushes the input bar to the top of the screen.
 	const scrollToBottom = () => {
-		messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+		const el = containerRef.current;
+		if (el) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
 	};
 
 	useEffect(() => {
 		scrollToBottom();
 	}, [messages, isTyping]);
 
-	const openMenu = (e: MouseEvent<HTMLDivElement>, index: number) => {
+	// opened by right-click (at the cursor) or by the "..." button (under the button)
+	const openMenu = (e: MouseEvent<HTMLElement>, index: number) => {
 		e.preventDefault();
-		setMenu({ x: e.clientX, y: e.clientY, index });
+		if (e.type === 'contextmenu') {
+			setMenu({ x: e.clientX, y: e.clientY, index });
+		} else {
+			const rect = e.currentTarget.getBoundingClientRect();
+			setMenu({ x: rect.right - MENU_WIDTH, y: rect.bottom + 4, index });
+		}
 	};
 
 	const buildMenuItems = (index: number): MenuItem[] => {
 		const msg = messages[index];
 
 		return [
-			{	
+			{
 				// copy text to clipboard
-				label: 'Copy',
+				label: 'Copy message',
 				onSelect: () => navigator.clipboard?.writeText(msg.text),
 			},
 			{
 				// branching off to create a new chat
-				label: 'Branch off to new chat',
-				onSelect: () => onBranch(index),
+				label: 'Start a new chat from here',
+				onSelect: () => onBranch?.(index),
 				disabled: !canBranch,
-				hint: 'Wait for the reply first',
+				hint: 'Wait for the reply to finish first',
 			},
 		];
 	};
 
 	return (
-		<div className="flex-1 overflow-y-auto p-12 space-y-6 max-w-4xl w-full mx-auto">
+		<div
+			ref={containerRef}
+			role="log"
+			aria-live="polite"
+			className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-8 py-8 space-y-6 max-w-4xl w-full mx-auto"
+		>
 			{messages.map((msg, index) => (
-				<ChatBubble 
-					key={msg.id} 
-					sender={msg.sender} 
-					text={msg.text} 
-					timestamp={msg.timestamp} 
+				<ChatBubble
+					key={msg.id}
+					sender={msg.sender}
+					text={msg.text}
+					timestamp={msg.timestamp}
 					samPFP={samPFP}
 					userPFP={userPFP}
 					samName={samName}
 					username={username}
 					onContextMenu={onBranch ? (e) => openMenu(e, index) : undefined}
+					onMenuClick={onBranch ? (e) => openMenu(e, index) : undefined}
 				/>
 			))}
 
-			{isTyping && <AgentThinking />}
+			{isTyping && <AgentThinking name={samName} />}
 
 			{/* menu closes itself if the chat was cleared underneath it */}
 			{menu && messages[menu.index] && (
@@ -90,9 +108,6 @@ export function ChatThread({
 					onClose={() => setMenu(null)}
 				/>
 			)}
-
-			{/* anchor scroll position */}
-			<div ref={messagesEndRef} />
 		</div>
 	);
 }

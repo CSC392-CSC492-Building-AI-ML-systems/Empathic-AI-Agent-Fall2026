@@ -501,7 +501,7 @@ function App() {
 
 
   	return (
-    	<div className="flex h-screen w-full bg-[#f6f7f5] dark:bg-slate-900 text-gray-800 dark:text-slate-100 font-sans transition-colors duration-200">
+    	<div className="flex h-dvh w-full bg-[#f6f7f5] dark:bg-slate-900 text-gray-800 dark:text-slate-100 font-sans transition-colors duration-200 antialiased">
 
 			{isAuthCallback ? (
 				<AuthCallback
@@ -595,7 +595,8 @@ function App() {
 											setInputVal(e.target.value);
 										}}
 										onSubmit={handleSubmit}
-										disabled={isTyping}
+										disabled={false}
+										submitDisabled={isTyping}
 										placeholder={messages.length === 0 ? "What is your question" : "Reply..."}
 									>
 										{browserSupportsSpeechRecognition && (

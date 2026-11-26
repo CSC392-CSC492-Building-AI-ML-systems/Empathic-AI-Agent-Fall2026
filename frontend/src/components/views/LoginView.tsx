@@ -419,6 +419,8 @@ export function LoginView({ onLoginSuccess }: LoginViewProps) {
                                 onOption2={handleConfirmNo} 
                                 option1Text="Yes" 
                                 option2Text="No"
+                                option1Variant="primary"
+                                option2Variant="primary"
                                 disabled={isTyping}
                             />
                         ) : isSignupOrLogin ? (
@@ -427,6 +429,8 @@ export function LoginView({ onLoginSuccess }: LoginViewProps) {
                                 onOption2={handleLogin}
                                 option1Text="Signup"
                                 option2Text="Login"
+                                option1Variant="primary"
+                                option2Variant="primary"
                                 disabled={isTyping}
                             />
                         ) : status === 'awaitingVerification' ? ( // lets see how this looks huh lol
