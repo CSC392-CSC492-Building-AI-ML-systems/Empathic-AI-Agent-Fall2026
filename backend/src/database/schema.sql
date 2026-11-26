@@ -31,6 +31,7 @@ CREATE TABLE user_memories (
     user_id UUID NOT NULL,
     memory_key TEXT NOT NULL,
     content TEXT NOT NULL,
+    session_id UUID NOT NULL,
 
     PRIMARY KEY (user_id, memory_key),
     FOREIGN KEY (user_id) REFERENCES users(id)

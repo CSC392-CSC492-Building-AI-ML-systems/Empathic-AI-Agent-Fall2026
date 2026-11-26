@@ -121,10 +121,10 @@ class UserDao:
             await cursor.execute(sql, (user_id,))
 
 
-    async def get_memories(self, user_id: UUID) -> dict[str, str]:
+    async def get_memories(self, user_id: UUID) -> dict[str, tuple[str, UUID]] | dict[str, str]:
         """Get a user's stored memories"""
         sql = """
-            SELECT memory_key, content
+            SELECT memory_key, content, session_id
             FROM user_memories
             WHERE user_id = %s
             ORDER BY memory_key ASC
@@ -135,7 +135,7 @@ class UserDao:
 
         memories = {}
         for row in rows:
-            memories[row[0]] = row[1]
+            memories[row[0]] = (row[1], row[2])
         return memories
 
     async def remove_memory(self, user_id: UUID, memory_key: str) -> None:
@@ -151,16 +151,16 @@ class UserDao:
             await cursor.execute(sql, (user_id, memory_key,))
 
 
-    async def upsert_memory(self, user_id: UUID, memory_key: str, content: str) -> None:
+    async def upsert_memory(self, user_id: UUID, memory_key: str, content: str, session_id: UUID) -> None:
         """Save a memory, replacing the content if the user's key already exists"""
         if not memory_key.strip():
             raise ValueError("memory_key must not be empty")
 
         sql = """
-            INSERT INTO user_memories (user_id, memory_key, content)
-            VALUES (%s, %s, %s)
+            INSERT INTO user_memories (user_id, memory_key, content, session_id)
+            VALUES (%s, %s, %s, %s)
             ON CONFLICT (user_id, memory_key) DO UPDATE
             SET content = EXCLUDED.content
         """
         async with self.pool.connection() as connection, connection.cursor() as cursor:
-            await cursor.execute(sql, (user_id, memory_key, content,))
+            await cursor.execute(sql, (user_id, memory_key, content, session_id))
