@@ -1,5 +1,5 @@
 // import { useState, useEffect, useRef } from 'react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, SyntheticEvent } from 'react';
 import { Sidebar } from './components/sidebar/Sidebar';
 import { Input } from './components/buttons/Input';
 import { InitialMood } from './components/chat/InitialMood';
@@ -10,18 +10,20 @@ import { SettingsView } from './components/views/SettingsView';
 import { supabase } from './lib/supabaseClient';
 import { AuthCallback } from './components/views/AuthCallback';
 import SpeechRecognition, { useSpeechRecognition } from 'react-speech-recognition';
+import type { ActiveTab, ChatMessage, ChatSession, Mood, SidebarTab, Theme, BackendHistoryItem } from './types/chat';
 import './App.css';
 
 function App() {
 	// start in the loginview -> no guest state for now
-	const [activeTab, setActiveTab] = useState('login'); 
-	const [messages, setMessages] = useState([]);
-	const [inputVal, setInputVal] = useState('');
-	const [sessionId, setSessionId] = useState(null);
-	const [sessions, setSessions] = useState([]);
+	const [activeTab, setActiveTab] = useState<ActiveTab>('login'); 
+	const [messages, setMessages] = useState<ChatMessage[]>([]);
+	const [inputVal, setInputVal] = useState<string>('');
+	const [sessionId, setSessionId] = useState<string | null>(null);
+	const [sessions, setSessions] = useState<ChatSession[]>([]);
 	// userId = null -> not logged in
-	const [userId, setUserId] = useState(null);
-	const [username, setUsername] = useState('User');
+	const [userId, setUserId] = useState<string | null>(null);
+	const [username, setUsername] = useState<string>('User');
+	const baseTextRef = useRef('');
 	// IF IMPLEMENT GUEST STATE
 	// const sessionFetched = useRef(false);
 
@@ -36,24 +38,17 @@ function App() {
 	const BASE = "http://localhost:8000";
 
 	// for personalization/customization
-	const [theme, setTheme] = useState('light');
-	const [samPFP, setSamPFP] = useState(null);
-	const [userPFP, setUserPFP] = useState(null);
-	const [samName, setSamName] = useState('SAM');
+	const [theme, setTheme] = useState<Theme>('light');
+	const [samPFP, setSamPFP] = useState<null | string>(null);
+	const [userPFP, setUserPFP] = useState<null | string>(null);
+	const [samName, setSamName] = useState<string>('SAM');
 
 	// for speech to text
 	const {
-		transcript,
 		listening,
 		resetTranscript,
 		browserSupportsSpeechRecognition,
 	} = useSpeechRecognition();
-
-	useEffect(() => {
-	if (listening) {
-		setInputVal(`${baseTextRef.current}${transcript}`);
-	}
-}, [transcript, listening]);
 
 	const handleToggleMic = () => {
 		if (listening) {
@@ -63,7 +58,13 @@ function App() {
 			const trimmedBase = inputVal.trim();
 			baseTextRef.current = trimmedBase ? `${trimmedBase} ` : '';
 			resetTranscript();
-			SpeechRecognition.startListening({ continuous: true, language: 'en-US' });
+			SpeechRecognition.startListening({
+				continuous: true,
+				language: 'en-US',
+				onResult: (result: string) => {
+					setInputVal(`${baseTextRef.current}${result}`);
+				},
+			});
 		}
 	};
 	
@@ -95,7 +96,7 @@ function App() {
 	// RETURNS the agent's response
 	// SETS the session id
 	// null -> failed to create session
-	const startSession = async (payload) => {
+	const startSession = async (payload: { text: string }): Promise<string | null> => {
 		console.log("starting a new session, will get agent's respnse and session id");
 		console.log("sending first msg: ", payload);
 
@@ -148,7 +149,7 @@ function App() {
 	// }, []);
 
 	// backend integration
-	const sendToBackend = async (payload) => {
+	const sendToBackend = async (payload: { text: string }): Promise<string | null> => {
 		// no session yet -> don't send to /session/null/message
 		if (!sessionId) {
 			console.log("No session id yet, can't send message");
@@ -181,7 +182,7 @@ function App() {
 		}
 	};
 
-	const handleMoodSelect = (mood) => {
+	const handleMoodSelect = (mood: Mood) => {
 		// hv default response based on the user's initial mood
 		// seem more human
 		let initialResponse = "How can I help you today?";
@@ -219,7 +220,7 @@ function App() {
 	};
 
 	// right clicking on a msg to bring to a new chat
-	const handleBranch = async (index) => {
+	const handleBranch = async (index: number) => {
 		const msg = messages[index];
 		if (isTyping) return;
 
@@ -253,7 +254,7 @@ function App() {
 	};
 	
 	// get msg from user and display
-	const handleSubmit = async (e) => {
+	const handleSubmit = async (e: SyntheticEvent<HTMLFormElement>) => {
     	e.preventDefault();
 
 		// so user cant send a msg when the agent is responding
@@ -328,19 +329,19 @@ function App() {
 		
  	};
 
-  	const sidebarTabState =
+  	const sidebarTabState: SidebarTab =
 		activeTab === 'settings'
 		? 'settings'
 		: activeTab === 'login' || activeTab === 'signup'
 		? 'login'
-    	: activeTab === 'past_chats'
-      	? 'past_chats'
+    	: activeTab === 'pastChats'
+      	? 'pastChats'
       	: messages.length === 0
       	? 'chat_new'
       	: 'chat_active';
 
 	// showing the temp past chats
-	const handleSelectPastChat = async (chatSession) => {
+	const handleSelectPastChat = async (chatSession: ChatSession) => {
 		// get the actual chat from the backend
 		try {
 			const pastChatResponse = await fetch(`${BASE}/session/${chatSession.session_id}`, {
@@ -358,7 +359,7 @@ function App() {
 			const pastChats = await pastChatResponse.json();
 			// populate convo history so we can set into msgs
 			
-			const convoHistory = pastChats.map((pastChatHistory) => ({
+			const convoHistory = pastChats.map((pastChatHistory: BackendHistoryItem): ChatMessage => ({
 				id: crypto.randomUUID(),
 				sender: pastChatHistory.role === 'assistant' ? 'sam' : 'user',
 				text: pastChatHistory.content,
@@ -384,7 +385,7 @@ function App() {
 		// saveCurrentSession();
 		// get all session when im about to open all the past chats
 		getAllSessions({ showLoading: sessions.length === 0 });
-		setActiveTab('past_chats');
+		setActiveTab('pastChats');
 	};
 
 	const handleLogout = async () => {
@@ -445,7 +446,7 @@ function App() {
 	};
 
 	// retrieve all the sessions from the backend
-	const getAllSessions = async ({ showLoading = true } = {}) => {
+	const getAllSessions = async ({ showLoading = true }: { showLoading?: boolean } = {}): Promise<void> => {
 		if (showLoading) {
 			setIsLoadingSessions(true);
 		}
@@ -475,7 +476,7 @@ function App() {
 		}
     };
 
-	const handleDeleteChat = async (sessionIdToDelete) => {
+	const handleDeleteChat = async (sessionIdToDelete: string): Promise<void> => {
 		try {
 			const deleteResponse = await fetch(`${BASE}/session/${sessionIdToDelete}/delete`, {
 				method: 'POST',
@@ -541,7 +542,7 @@ function App() {
 					/>
 
 					<main className="flex-1 flex flex-col h-full overflow-hidden relative">
-						{activeTab === 'past_chats' ? (
+						{activeTab === 'pastChats' ? (
 							<PastChatsView 
 								onSelectChat={handleSelectPastChat} 
 								sessions={sessions}

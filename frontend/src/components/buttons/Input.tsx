@@ -1,4 +1,14 @@
+import type { ChangeEvent, SyntheticEvent, ReactNode } from 'react';
 
+interface InputProps {
+	value: string;
+	onChange: (e: ChangeEvent<HTMLInputElement>) => void;
+	onSubmit: (e: SyntheticEvent<HTMLFormElement>) => void;
+	placeholder?: string;
+	type?: 'text' | 'password';
+	disabled?: boolean;
+	children?: ReactNode;
+}
 
 export function Input({ value, onChange, onSubmit, placeholder, type="text", disabled=false, children }) {
   return (

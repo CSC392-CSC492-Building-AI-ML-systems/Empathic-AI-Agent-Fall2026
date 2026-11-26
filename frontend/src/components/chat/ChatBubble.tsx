@@ -1,8 +1,10 @@
-import ReactMarkdown from 'react-markdown';
+import ReactMarkdown, { Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import type { MouseEvent } from 'react';
 import { HeartIcon, UserIcon } from '../buttons/Icons';
+import type { Sender } from '../../types/chat';
 
-const MARKDOWN_COMPONENTS = {
+const MARKDOWN_COMPONENTS: Components = {
 	p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
 	strong: ({ children }) => (
 		<strong className="font-bold text-gray-900 dark:text-white">{children}</strong>
@@ -35,6 +37,17 @@ const MARKDOWN_COMPONENTS = {
 	),
 };
 
+interface ChatBubbleProps {
+	sender: Sender;
+	text: string;
+	timestamp?: string;
+	samPFP?: string | null;
+	userPFP?: string | null;
+	samName?: string;
+	username?: string;
+	onContextMenu?: (e: MouseEvent<HTMLDivElement>) => void;
+}
+
 export function ChatBubble({ 
 	sender, 
 	text, 
@@ -44,7 +57,7 @@ export function ChatBubble({
 	samName = 'Sam', 
 	username = 'User',
 	onContextMenu 
-	}) {
+	}: ChatBubbleProps) {
 	const isBot = sender === 'sam';
 
 	// adding in a place for time

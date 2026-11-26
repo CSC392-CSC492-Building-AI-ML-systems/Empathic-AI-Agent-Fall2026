@@ -1,4 +1,24 @@
-import { useState } from 'react';
+import { ChangeEvent, SyntheticEvent, useState } from 'react';
+import type { Theme } from '../../types/chat';
+
+interface PFPChooserProps {
+	title: string;
+	currentPFP: string | null;
+	onSelectPFP?: (src: string | null) => void;
+	resetLabel?: string;
+}
+
+interface SettingsViewProps {
+	onBackToChat: () => void;
+	theme?: Theme;
+	onToggleTheme: () => void;
+	samPFP?: string | null;
+	onSelectSamPFP?: (src: string | null) => void;
+	userPFP?: string | null;
+	onSelectUserPFP?: (src: string | null) => void;
+	samName?: string;
+	onChangeSamName?: (name: string) => void;
+}
 
 const makeEmojiAvatar = (emoji, bgColor) =>
 	`data:image/svg+xml;utf8,${encodeURIComponent(
@@ -29,9 +49,9 @@ function PFPChooser({
 	currentPFP, 
 	onSelectPFP, 
 	resetLabel = 'Reset to default icon'
-	}) {
+	}: PFPChooserProps) {
 
-	const handleFileChange = (e) => {
+	const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
 		const file = e.target.files?.[0];
 		if (!file || !file.type.startsWith('image/')) return;
 
@@ -115,13 +135,13 @@ export function SettingsView({
 	onSelectUserPFP,
 	samName = 'Sam',
 	onChangeSamName
-	}) {
+	}: SettingsViewProps) {
 
     const isDark = theme === 'dark';
 	const [nameInput, setNameInput] = useState(samName);
 	const [savedNotice, setSavedNotice] = useState(false);
 
-	const handleNameSubmit = (e) => {
+	const handleNameSubmit = (e: SyntheticEvent<HTMLFormElement>) => {
 		e.preventDefault();
 		const cleaned = nameInput.trim() || 'Sam';
 		onChangeSamName?.(cleaned);

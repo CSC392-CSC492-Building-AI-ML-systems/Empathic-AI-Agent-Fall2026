@@ -1,7 +1,12 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
+import type { ChatSession } from '../../types/chat';
 
-export function AuthCallback({ onLoginSuccess }) {
+interface AuthCallbackProps {
+    onLoginSuccess: (userId: string, sessions: ChatSession[]) => void;
+}
+
+export function AuthCallback({ onLoginSuccess }: AuthCallbackProps) {
     const [message, setMessage] = useState('Verifying your email...');
 
     useEffect(() => {

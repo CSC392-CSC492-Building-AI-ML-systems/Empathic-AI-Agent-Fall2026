@@ -1,7 +1,16 @@
 // import { PAST_CHATS_MOCK } from '../../mockChats/pastChatsTemp';
 {/* temporary to show what past chats can be like ^^ */}
+import type { ReactNode } from 'react';
+import type { ChatSession } from '../../types/chat';
 
-export function PastChatsView({onSelectChat, sessions, onDeleteChat, isLoading = false}) {
+interface PastChatsViewProps {
+	onSelectChat: (session: ChatSession) => void;
+	sessions: ChatSession[];
+	onDeleteChat: (sessionId: string) => void;
+	isLoading?: boolean;
+}
+
+export function PastChatsView({onSelectChat, sessions, onDeleteChat, isLoading = false}: PastChatsViewProps) {
 
 	let pastChatsList;
 	if (isLoading) {

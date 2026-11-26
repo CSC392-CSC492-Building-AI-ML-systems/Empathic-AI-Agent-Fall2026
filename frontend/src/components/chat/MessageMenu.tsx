@@ -1,8 +1,17 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
+import type { MenuItem } from '../../types/chat';
+
+interface MessageMenuProps {
+	x: number;
+	y: number;
+	items: MenuItem[];
+	onClose: () => void;
+}
+
 // items = [{ label, onSelect, disabled?, hint? }]
-export function MessageMenu({ x, y, items, onClose }) {
+export function MessageMenu({ x, y, items, onClose }: MessageMenuProps) {
 	const menuRef = useRef(null);
 	const [pos, setPos] = useState({ left: x, top: y });
 

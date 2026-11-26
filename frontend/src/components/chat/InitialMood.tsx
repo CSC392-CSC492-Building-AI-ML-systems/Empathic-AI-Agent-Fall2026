@@ -1,8 +1,13 @@
 import { PlusIcon } from '../buttons/Icons';
+import type { Mood } from '../../types/chat';
 
-const MOODS = ['great', 'good', 'alright', 'terrible'];
+const MOODS: Mood[] = ['great', 'good', 'alright', 'terrible'];
 
-export function InitialMood({ onSelectMood }) {
+interface InitialMoodProps {
+	onSelectMood: (mood: Mood) => void;
+}
+
+export function InitialMood({ onSelectMood }: InitialMoodProps) {
 	return (
 		<div className="grid grid-cols-2 gap-3 w-80">
 		{MOODS.map((mood) => (

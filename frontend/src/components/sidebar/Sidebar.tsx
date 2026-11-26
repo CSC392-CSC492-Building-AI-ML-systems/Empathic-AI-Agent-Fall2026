@@ -1,7 +1,18 @@
 import { HeartIcon } from '../buttons/Icons';
 import { SidebarNavItem } from './SidebarNavItem';
+import type { SidebarTab } from '../../types/chat';
 
-export function Sidebar({ activeTab, onNewChat, onOpenPastChats, onOpenLogin, onLogout, onOpenSettings, isLoggedIn }) {
+interface SidebarProps {
+	activeTab: SidebarTab;
+	onNewChat: () => void;
+	onOpenPastChats: () => void;
+	onOpenLogin?: () => void;   // optional: App currently doesn't pass it
+	onLogout: () => void;
+	onOpenSettings: () => void;
+	isLoggedIn: boolean;
+}
+
+export function Sidebar({ activeTab, onNewChat, onOpenPastChats, onOpenLogin, onLogout, onOpenSettings, isLoggedIn }: SidebarProps) {
 	return (
 		<aside className="w-64 bg-[#e9ebe6] dark:bg-slate-950/70 border-r border-gray-300/60 dark:border-slate-800 flex flex-col justify-between p-4 shrink-0 transition-colors">
 		<div className="space-y-6">
@@ -20,7 +31,7 @@ export function Sidebar({ activeTab, onNewChat, onOpenPastChats, onOpenLogin, on
 			/>
 			<SidebarNavItem
 				label="past chats"
-				active={activeTab === 'past_chats'}
+				active={activeTab === 'pastChats'}
 				onClick={onOpenPastChats}
 			/>
 			</div>
