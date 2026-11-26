@@ -1,12 +1,35 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type MouseEvent } from 'react';
 import { ChatBubble } from './ChatBubble';
 import { AgentThinking } from './AgentThinking';
 import { MessageMenu } from './MessageMenu';
+import type { ChatMessage, MenuItem } from '../../types/chat';
 
-export function ChatThread({ messages, isTyping, onBranch, canBranch = false }) {
-	const messagesEndRef = useRef(null);
-	// { x, y, index } of the bubble that was right clicked
-	const [menu, setMenu] = useState(null);
+interface ChatThreadProps {
+	messages: ChatMessage[];
+	isTyping: boolean;
+	onBranch?: (index: number) => void;
+	canBranch?: boolean;
+	samPFP?: string | null;
+	userPFP?: string | null;
+	samName?: string;
+	username?: string;
+}
+
+interface MenuState { x: number; y: number; index: number }
+
+export function ChatThread({ 
+	messages, 
+	isTyping, 
+	onBranch, 
+	canBranch = false, 
+	samPFP = null, 
+	userPFP = null, 
+	samName = 'Sam',
+	username = 'User' 
+	}: ChatThreadProps) {
+
+	const messagesEndRef = useRef<HTMLDivElement>(null);
+	const [menu, setMenu] = useState<MenuState | null>(null);
 
 	const scrollToBottom = () => {
 		messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -16,12 +39,12 @@ export function ChatThread({ messages, isTyping, onBranch, canBranch = false }) 
 		scrollToBottom();
 	}, [messages, isTyping]);
 
-	const openMenu = (e, index) => {
+	const openMenu = (e: MouseEvent<HTMLDivElement>, index: number) => {
 		e.preventDefault();
 		setMenu({ x: e.clientX, y: e.clientY, index });
 	};
 
-	const buildMenuItems = (index) => {
+	const buildMenuItems = (index: number): MenuItem[] => {
 		const msg = messages[index];
 
 		return [
@@ -48,6 +71,10 @@ export function ChatThread({ messages, isTyping, onBranch, canBranch = false }) 
 					sender={msg.sender} 
 					text={msg.text} 
 					timestamp={msg.timestamp} 
+					samPFP={samPFP}
+					userPFP={userPFP}
+					samName={samName}
+					username={username}
 					onContextMenu={onBranch ? (e) => openMenu(e, index) : undefined}
 				/>
 			))}

@@ -1,27 +1,35 @@
-import { useState } from 'react';
+import { useState, SyntheticEvent } from 'react';
 import { ChatThread } from '../chat/ChatThread';
 import { Input } from '../buttons/Input';
 import { supabase } from '../../lib/supabaseClient';
 import { TwoOptionButton } from '../buttons/TwoOptionButton';
+import type { User } from '@supabase/supabase-js';
+import type { ChatMessage, ChatSession, LoginStatus, LoginOrSignup } from '../../types/chat';
+
+interface LoginViewProps {
+	onLoginSuccess: (userId: string, sessions: ChatSession[], username?: string) => void;
+	onBackToChat?: () => void;
+}
 
 // add in onBackToChat when implement guest state
-export function LoginView({ onLoginSuccess }) {
+export function LoginView({ onLoginSuccess }: LoginViewProps) {
 
     // initial message from agent
-    const [messages, setMessages] = useState(() => [
-        { id: crypto.randomUUID(), sender: 'sam', text: "Hi! I'm Sam :) Would you like to login or signup?", timestamp: new Date().toISOString() }
+    const [messages, setMessages] = useState<ChatMessage[]>(() => [
+        { id: crypto.randomUUID(), sender: 'sam', text: "Hi! I'm Sam :) Would you like to signup or login?", timestamp: new Date().toISOString() }
     ]);
+    
     
     const [inputVal, setInputVal] = useState('');
     const [error, setError] = useState('');
 
     // status = 'name' | 'confirmName' | 'email' | 'confirmEmail' | 'password' | 'confirmPassword' | 'awaitingVerification' | 'done'
     // confirming password and awaiting verification are only for signup, NOT login
-    const [status, setStatus] = useState('');
+    const [status, setStatus] = useState<LoginStatus>('');
 
     // login + password -> ask for their set password
     // signup + password -> ask them to create a password
-    const [loginOrSignup, setLoginOrSignup] = useState('');
+    const [loginOrSignup, setLoginOrSignup] = useState<LoginOrSignup>('');
 
     // only confirm name after user types in a valid input
     const [username, setUsername] = useState('');
@@ -43,7 +51,7 @@ export function LoginView({ onLoginSuccess }) {
 
     // const BASE = "http://localhost:8000";
 
-    const handleSubmit = async (e) => {
+    const handleSubmit = async (e: SyntheticEvent<HTMLFormElement>) => {
         e.preventDefault();
         // so user cant send a msg when the agent is responding
 		if (isTyping) return;
@@ -146,8 +154,10 @@ export function LoginView({ onLoginSuccess }) {
                 }
 
                 const userId = loginData.user.id;
+                const name = extractUserName(loginData.user);
+                setUsername(name);
                 setUserId(userId);
-                onLoginSuccess(userId, []);
+                onLoginSuccess(userId, [], name);
 
                 await agentMsg("Ok :D I have all the info I need now. You are all logged in now!");
                 console.log("-----------------completed login---------------------");
@@ -186,10 +196,12 @@ export function LoginView({ onLoginSuccess }) {
             }
             
             const newUserId = signupData.user.id;
+            const name = extractUserName(signupData.user);
+            setUsername(name);
 
             setUserId(newUserId);
             // signup -> new user -> no chat history
-            onLoginSuccess(newUserId, []);
+            onLoginSuccess(newUserId, [], name);
             // password is handled by supabase now
             
             await agentMsg(`Ok :D I have all the info I need now. It was a pleasure to meet you ${username}!`);
@@ -204,7 +216,7 @@ export function LoginView({ onLoginSuccess }) {
     const isWaitingForConfirmation = status === 'confirmName' || status === 'confirmEmail';
     const isSignupOrLogin = status === '' && !isWaitingForConfirmation;
 
-    const userMsg = async (text) => {
+    const userMsg = async (text: string) => {
         setMessages((prev) => [...prev, {
             id: crypto.randomUUID(),
             sender: username !== '' ? username : 'user',
@@ -213,7 +225,7 @@ export function LoginView({ onLoginSuccess }) {
         }]);
     };
     
-    const agentMsg = async (text) => {
+    const agentMsg = async (text: string) => {
         setInputVal('');
         setIsTyping(true);
         await waitOneSecond();
@@ -229,30 +241,13 @@ export function LoginView({ onLoginSuccess }) {
     const handleConfirmYes = async () => {
         // so user cant send a msg when the agent is responding
 		if (isTyping) return;
-
-        const userMsg = { 
-            id: crypto.randomUUID(), 
-            sender: 'user', 
-            text: 'Yes', 
-            timestamp: new Date().toISOString() 
-        };
         
         if (status === 'confirmName') {
-
-            const emailMsg = { 
-                id: crypto.randomUUID(), 
-                sender: 'sam', 
-                text: `Nice to meet you ${pendingName}. What's your email?`, 
-                timestamp: new Date().toISOString() 
-            };
-
-            setMessages((prev) => [...prev, userMsg]);
-
-            setIsTyping(true);
+            await userMsg('Yes');
+ 
             await waitOneSecond();
 
-            setMessages((prev) => [...prev, emailMsg])
-            setIsTyping(false);
+            await agentMsg(`Nice to meet you ${pendingName}. What's your email?`);
             setUsername(pendingName);
             setStatus('email');
         } 
@@ -272,18 +267,7 @@ export function LoginView({ onLoginSuccess }) {
 
         } 
         else if (status === 'confirmEmail') {
-            const retryMsg = { 
-                id: crypto.randomUUID(), 
-                sender: 'sam', 
-                text: "No worries, what is your email again?", 
-                timestamp: new Date().toISOString() 
-            };
-
-            setMessages((prev) => [...prev, userMsg]);
-            setIsTyping(true);
-            await waitOneSecond();
-
-            setMessages((prev) => [...prev, retryMsg])
+            await agentMsg("no worries, maybe I read wrong, what is your email again?");
             setIsTyping(false);
             setStatus('email');
         }
@@ -321,7 +305,7 @@ export function LoginView({ onLoginSuccess }) {
     };
     
     // using supabaset to login to an account -> returns data if successful, null if not
-    const loginToAccount = async(password) => {
+    const loginToAccount = async(password: string) => {
          try {
             const { data, error } =
                 await supabase.auth.signInWithPassword({
@@ -343,7 +327,7 @@ export function LoginView({ onLoginSuccess }) {
     };
 
     // using supabase to create an account -> returns data if successful, null if not
-    const createAccount = async(name, email, password) => {
+    const createAccount = async(name: string, email: string, password: string) => {
         try {
             const { data, error } = await supabase.auth.signUp({
                 email,
@@ -366,6 +350,12 @@ export function LoginView({ onLoginSuccess }) {
             return null;
         }
     };
+
+    const extractUserName = (user: User | null | undefined) =>
+        user?.user_metadata?.name ||
+        user?.user_metadata?.full_name ||
+        username ||
+        'User';
 
     const resetAllFields = async() => {
         setUsername('');
@@ -397,7 +387,7 @@ export function LoginView({ onLoginSuccess }) {
     return (
         <div className="flex-1 flex flex-col h-full justify-between overflow-hidden">
             <div className="flex items-center justify-between max-w-4xl w-full mx-auto px-6 pt-6 shrink-0">
-                <h1 className="text-center text-3xl font-bold text-gray-900 mb-1">Login</h1>
+                <h1 className="text-center text-3xl font-bold text-gray-900 dark:text-slate-100mb-1">Login</h1>
                 {status !== '' && status !== 'done' && (
                     <div className="flex justify-end px-6 pt-2 shrink-0">
                         <button
@@ -413,7 +403,7 @@ export function LoginView({ onLoginSuccess }) {
             </div>
 
             <div className="flex-1 flex flex-col h-full justify-between overflow-hidden">
-                <ChatThread messages={messages} isTyping={isTyping} />
+                <ChatThread messages={messages} isTyping={isTyping} onBranch={undefined} />
 
                     <div className="p-6 max-w-4xl w-full mx-auto">
 

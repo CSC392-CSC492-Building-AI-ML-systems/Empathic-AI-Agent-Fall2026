@@ -1,8 +1,17 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
+import type { MenuItem } from '../../types/chat';
+
+interface MessageMenuProps {
+	x: number;
+	y: number;
+	items: MenuItem[];
+	onClose: () => void;
+}
+
 // items = [{ label, onSelect, disabled?, hint? }]
-export function MessageMenu({ x, y, items, onClose }) {
+export function MessageMenu({ x, y, items, onClose }: MessageMenuProps) {
 	const menuRef = useRef(null);
 	const [pos, setPos] = useState({ left: x, top: y });
 
@@ -48,7 +57,7 @@ export function MessageMenu({ x, y, items, onClose }) {
 			role="menu"
 			onContextMenu={(e) => e.preventDefault()}
 			style={{ position: 'fixed', left: pos.left, top: pos.top }}
-			className="z-50 min-w-48 rounded-xl border border-gray-200 bg-white py-1 shadow-lg"
+			className="z-50 min-w-48 rounded-xl border border-gray-200 dark:border-slate-400 bg-white dark:bg-slate-800 py-1 shadow-lg"
 		>
 			{items.map((item) => (
 				<button
@@ -61,7 +70,7 @@ export function MessageMenu({ x, y, items, onClose }) {
 						item.onSelect();
 						onClose();
 					}}
-					className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 focus:bg-gray-100 focus:outline-none disabled:text-gray-300 disabled:hover:bg-transparent disabled:cursor-not-allowed"
+					className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-700/80 focus:bg-gray-100 dark:focus:bg-slate-700/80 focus:outline-none disabled:text-gray-300 dark:disabled:text-slate-600 disabled:hover:bg-transparent disabled:cursor-not-allowed"
 				>
 					{item.label}
 				</button>

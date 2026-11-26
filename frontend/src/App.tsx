@@ -1,5 +1,5 @@
 // import { useState, useEffect, useRef } from 'react';
-import { useState } from 'react';
+import { useState, useEffect, useRef, SyntheticEvent } from 'react';
 import { Sidebar } from './components/sidebar/Sidebar';
 import { Input } from './components/buttons/Input';
 import { InitialMood } from './components/chat/InitialMood';
@@ -9,29 +9,74 @@ import { LoginView } from './components/views/LoginView';
 import { SettingsView } from './components/views/SettingsView';
 import { supabase } from './lib/supabaseClient';
 import { AuthCallback } from './components/views/AuthCallback';
+import SpeechRecognition, { useSpeechRecognition } from 'react-speech-recognition';
+import type { ActiveTab, ChatMessage, ChatSession, Mood, SidebarTab, Theme, BackendHistoryItem } from './types/chat';
 import './App.css';
 
 function App() {
 	// start in the loginview -> no guest state for now
-	const [activeTab, setActiveTab] = useState('login'); 
-	const [messages, setMessages] = useState([]);
-	const [inputVal, setInputVal] = useState('');
-	const [sessionId, setSessionId] = useState(null);
-	const [sessions, setSessions] = useState([]);
+	const [activeTab, setActiveTab] = useState<ActiveTab>('login'); 
+	const [messages, setMessages] = useState<ChatMessage[]>([]);
+	const [inputVal, setInputVal] = useState<string>('');
+	const [sessionId, setSessionId] = useState<string | null>(null);
+	const [sessions, setSessions] = useState<ChatSession[]>([]);
+	// userId = null -> not logged in
+	const [userId, setUserId] = useState<string | null>(null);
+	const [username, setUsername] = useState<string>('User');
+	const baseTextRef = useRef('');
 	// IF IMPLEMENT GUEST STATE
 	// const sessionFetched = useRef(false);
 
 	// to simulate thinking -> more empathetic (?)
 	const waitOneSecond = () => new Promise((resolve) => setTimeout(resolve, 1000));
 	const [isTyping, setIsTyping] = useState(false);
-
-	// userId = null -> not logged in
-	const [userId, setUserId] = useState(null);
+	const [isLoadingSessions, setIsLoadingSessions] = useState(false);
 
 	// for authentication
 	const isAuthCallback = window.location.pathname === '/auth/callback';
 
 	const BASE = "http://localhost:8000";
+
+	// for personalization/customization
+	const [theme, setTheme] = useState<Theme>('light');
+	const [samPFP, setSamPFP] = useState<null | string>(null);
+	const [userPFP, setUserPFP] = useState<null | string>(null);
+	const [samName, setSamName] = useState<string>('SAM');
+
+	// for speech to text
+	const {
+		listening,
+		resetTranscript,
+		browserSupportsSpeechRecognition,
+	} = useSpeechRecognition();
+
+	const handleToggleMic = () => {
+		if (listening) {
+			SpeechRecognition.stopListening();
+		} 
+		else {
+			const trimmedBase = inputVal.trim();
+			baseTextRef.current = trimmedBase ? `${trimmedBase} ` : '';
+			resetTranscript();
+			SpeechRecognition.startListening({
+				continuous: true,
+				language: 'en-US',
+				onResult: (result: string) => {
+					setInputVal(`${baseTextRef.current}${result}`);
+				},
+			});
+		}
+	};
+	
+
+
+	useEffect(() => {
+		document.documentElement.classList.toggle('dark', theme === 'dark');
+	}, [theme]);
+
+	const handleToggleTheme = () => {
+		setTheme((prev) => (prev === 'light' ? 'dark' : 'light'));
+	};
 
 	// Get the current Supabase access token and prepare request headers
 	const getAuthHeaders = async () => {
@@ -51,7 +96,7 @@ function App() {
 	// RETURNS the agent's response
 	// SETS the session id
 	// null -> failed to create session
-	const startSession = async (payload) => {
+	const startSession = async (payload: { text: string }): Promise<string | null> => {
 		console.log("starting a new session, will get agent's respnse and session id");
 		console.log("sending first msg: ", payload);
 
@@ -104,7 +149,7 @@ function App() {
 	// }, []);
 
 	// backend integration
-	const sendToBackend = async (payload) => {
+	const sendToBackend = async (payload: { text: string }): Promise<string | null> => {
 		// no session yet -> don't send to /session/null/message
 		if (!sessionId) {
 			console.log("No session id yet, can't send message");
@@ -137,7 +182,7 @@ function App() {
 		}
 	};
 
-	const handleMoodSelect = (mood) => {
+	const handleMoodSelect = (mood: Mood) => {
 		// hv default response based on the user's initial mood
 		// seem more human
 		let initialResponse = "How can I help you today?";
@@ -163,6 +208,9 @@ function App() {
 	// save curr session to sessions if there are messages
 	// brings back to og state
 	const handleNewChat = () => {
+		if (listening) {
+			SpeechRecognition.stopListening();
+		}
 		// remove save current session if no use
 		saveCurrentSession();
     	setActiveTab('chat');
@@ -172,7 +220,7 @@ function App() {
 	};
 
 	// right clicking on a msg to bring to a new chat
-	const handleBranch = async (index) => {
+	const handleBranch = async (index: number) => {
 		const msg = messages[index];
 		if (isTyping) return;
 
@@ -206,7 +254,7 @@ function App() {
 	};
 	
 	// get msg from user and display
-	const handleSubmit = async (e) => {
+	const handleSubmit = async (e: SyntheticEvent<HTMLFormElement>) => {
     	e.preventDefault();
 
 		// so user cant send a msg when the agent is responding
@@ -214,6 +262,10 @@ function App() {
 
     	const trimmedInput = inputVal.trim();
     	if (!trimmedInput) return;
+
+		if (listening) {
+			SpeechRecognition.stopListening();
+		}
 
 		const userMsg = { 
 			id: Date.now(), 
@@ -277,19 +329,19 @@ function App() {
 		
  	};
 
-  	const sidebarTabState =
+  	const sidebarTabState: SidebarTab =
 		activeTab === 'settings'
 		? 'settings'
 		: activeTab === 'login' || activeTab === 'signup'
 		? 'login'
-    	: activeTab === 'past_chats'
-      	? 'past_chats'
+    	: activeTab === 'pastChats'
+      	? 'pastChats'
       	: messages.length === 0
       	? 'chat_new'
       	: 'chat_active';
 
 	// showing the temp past chats
-	const handleSelectPastChat = async (chatSession) => {
+	const handleSelectPastChat = async (chatSession: ChatSession) => {
 		// get the actual chat from the backend
 		try {
 			const pastChatResponse = await fetch(`${BASE}/session/${chatSession.session_id}`, {
@@ -307,7 +359,7 @@ function App() {
 			const pastChats = await pastChatResponse.json();
 			// populate convo history so we can set into msgs
 			
-			const convoHistory = pastChats.map((pastChatHistory) => ({
+			const convoHistory = pastChats.map((pastChatHistory: BackendHistoryItem): ChatMessage => ({
 				id: crypto.randomUUID(),
 				sender: pastChatHistory.role === 'assistant' ? 'sam' : 'user',
 				text: pastChatHistory.content,
@@ -332,8 +384,8 @@ function App() {
 		// save current session
 		// saveCurrentSession();
 		// get all session when im about to open all the past chats
-		getAllSessions();
-		setActiveTab('past_chats');
+		getAllSessions({ showLoading: sessions.length === 0 });
+		setActiveTab('pastChats');
 	};
 
 	const handleLogout = async () => {
@@ -347,6 +399,7 @@ function App() {
 
 			// Clear frontend state
 			setUserId(null);
+			setUsername('User');
 			setMessages([]);
 			setSessionId(null);
 			setSessions([]);
@@ -393,7 +446,10 @@ function App() {
 	};
 
 	// retrieve all the sessions from the backend
-	const getAllSessions = async () => {
+	const getAllSessions = async ({ showLoading = true }: { showLoading?: boolean } = {}): Promise<void> => {
+		if (showLoading) {
+			setIsLoadingSessions(true);
+		}
 		try {
 
 			const sessionsResponse = await fetch(`${BASE}/session/get_sessions`, {
@@ -407,17 +463,45 @@ function App() {
 			}
 
 			const allSessions = await sessionsResponse.json();
-			setSessions(allSessions.sessions);
+			setSessions(allSessions.sessions ?? []);
 		}
 		catch (error) {
 			console.log(error);
 			console.log("error in retrieving all sessions");
 		}
+		finally {
+			if (showLoading) {
+				setIsLoadingSessions(false);
+			}
+		}
     };
+
+	const handleDeleteChat = async (sessionIdToDelete: string): Promise<void> => {
+		try {
+			const deleteResponse = await fetch(`${BASE}/session/${sessionIdToDelete}/delete`, {
+				method: 'POST',
+				headers: await getAuthHeaders(),
+			});
+			
+			if (!deleteResponse.ok) {
+				console.log("failed to delete session");
+				return;
+			}
+		}
+		catch (error) {
+			console.log(error);
+			console.log("error in deleting session");
+		}
+
+		// update the sessions state to remove the deleted session
+		setSessions((prevSessions) =>
+			prevSessions.filter((session) => session.session_id !== sessionIdToDelete)
+		);
+	};
 
 
   	return (
-    	<div className="flex h-screen w-full bg-[#f6f7f5] text-gray-800 font-sans">
+    	<div className="flex h-screen w-full bg-[#f6f7f5] dark:bg-slate-900 text-gray-800 dark:text-slate-100 font-sans transition-colors duration-200">
 
 			{isAuthCallback ? (
 				<AuthCallback
@@ -432,10 +516,14 @@ function App() {
 			) : activeTab === 'login' ? (
 				<LoginView
 					onBackToChat={() => setActiveTab('chat')}
-					onLoginSuccess={(loginId, loginSessions) => {
+					onLoginSuccess={(loginId, loginSessions, loginUsername) => {
 						setUserId(loginId);
 						// used for retrieving past chats
 						setSessions(loginSessions);
+						if (loginUsername) {
+							setUsername(loginUsername);
+						}
+						window.history.replaceState({}, '', '/');
 						console.log(`this is the userId: ${loginId}`);
 						console.log(`these are all the sessions associated with this user: ${loginSessions}`);
 						setTimeout(() => setActiveTab('chat'), 2000);
@@ -454,22 +542,32 @@ function App() {
 					/>
 
 					<main className="flex-1 flex flex-col h-full overflow-hidden relative">
-						{activeTab === 'past_chats' ? (
+						{activeTab === 'pastChats' ? (
 							<PastChatsView 
 								onSelectChat={handleSelectPastChat} 
 								sessions={sessions}
+								onDeleteChat={handleDeleteChat}
+								isLoading={isLoadingSessions}
 							/>
 						) : activeTab === 'settings' ? (
 							<SettingsView 
 								onBackToChat={() => setActiveTab('chat')} 
+								theme={theme}
+								onToggleTheme={handleToggleTheme}
+								samPFP={samPFP}
+								onSelectSamPFP={setSamPFP}
+								userPFP={userPFP}
+								onSelectUserPFP={setUserPFP}
+								samName={samName}
+								onChangeSamName={setSamName}
 							/>
 						) : (
 							<div className="flex-1 flex flex-col h-full justify-between overflow-hidden">
 								{messages.length === 0 ? (
 								<div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-8">
 									<div className="space-y-3">
-									<h1 className="text-4xl font-extrabold text-gray-900">Welcome</h1>
-									<p className="text-2xl text-gray-700">How was your day ?</p>
+									<h1 className="text-4xl font-extrabold text-gray-900 dark:text-slate-100">Welcome</h1>
+									<p className="text-2xl text-gray-700 dark:text-slate-300">How was your day ?</p>
 									</div>
 									<InitialMood onSelectMood={handleMoodSelect} />
 								</div>
@@ -481,19 +579,55 @@ function App() {
 										isTyping={isTyping} 
 										onBranch={handleBranch}
 										canBranch={!isTyping}
+										samPFP={samPFP}
+										userPFP={userPFP}
+										samName={samName}
+										username={username}
 									/>
 								</div>
 								)}
 
 								<div className="p-6 max-w-4xl w-full mx-auto">
-								<Input
-									value={inputVal}
-									onChange={(e) => setInputVal(e.target.value)}
-									onSubmit={handleSubmit}
-									disabled={isTyping}
-									placeholder={messages.length === 0 ? "What is your question" : "Reply..."}
-									
-								/>
+									<Input
+										value={inputVal}
+										onChange={(e) => {
+											if (listening) SpeechRecognition.stopListening();
+											setInputVal(e.target.value);
+										}}
+										onSubmit={handleSubmit}
+										disabled={isTyping}
+										placeholder={messages.length === 0 ? "What is your question" : "Reply..."}
+									>
+										{browserSupportsSpeechRecognition && (
+											<button
+												type="button"
+												onClick={handleToggleMic}
+												disabled={isTyping}
+												aria-label={listening ? 'Stop voice input' : 'Start voice input'}
+												title={listening ? 'Stop listening' : 'Speak to type'}
+												className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
+													listening
+														? 'bg-red-100 text-red-600 dark:bg-red-950/60 dark:text-red-400 animate-pulse'
+														: 'text-gray-500 hover:bg-gray-100 dark:text-slate-400 dark:hover:bg-slate-700/60'
+												}`}
+											>
+												<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+													<path
+														strokeLinecap="round"
+														strokeLinejoin="round"
+														strokeWidth="2"
+														d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"
+													/>
+													<path
+														strokeLinecap="round"
+														strokeLinejoin="round"
+														strokeWidth="2"
+														d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8"
+													/>
+												</svg>
+											</button>
+										)}
+									</Input>
 								</div>
 							</div>
 						)}
