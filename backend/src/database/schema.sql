@@ -8,6 +8,7 @@ CREATE TABLE sessions (
     id UUID PRIMARY KEY,
     name TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    compaction_timestamp TIMESTAMPTZ,
 
     user_id UUID NOT NULL,
     terminated BOOLEAN NOT NULL DEFAULT false,

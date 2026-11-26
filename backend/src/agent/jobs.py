@@ -3,16 +3,18 @@ import json
 from dataclasses import dataclass, replace
 from uuid import UUID
 
-from .context import ContextBuilder
-from .worker import logger # REMOVE LATER
 from ..database.dao.message_dao import MessageDao
 from ..database.dao.session_dao import SessionDao
 from ..database.dao.user_dao import UserDao
+from ..database.model.message import Message
 from ..database.model.session import Session
+from .context import ContextBuilder
 from .evaluate_answer import model_decide, model_web_search
 from .fine_tune import send_model
+from .worker import logger  # REMOVE LATER
 
-TURN_LIMIT = 10
+TURN_LIMIT = 15
+HISTORY_MESSAGE_LIMIT = 5
 SESSION_CLOSED_REPLY = "This session has been terminated."
 
 @dataclass
@@ -138,7 +140,19 @@ class ResponseJob(GenericJob):
                                          session=self.session)
 
         response = await send_model(context_builder)
-        await self.message_dao.add_message("assistant", response, self.session_id)
+        response_timestamp = await self.message_dao.add_message("assistant", response, self.session_id)
+        self.session.add_message(Message(role="assistant",
+                                         content=response,
+                                         message_id=0,
+                                         created_at=response_timestamp)) #adding dummy message
+        history = self.session.get_conversation_for_model()
+        if len(history) + 1 > HISTORY_MESSAGE_LIMIT:
+
+            logger.warn("===> COMPACTING HISTORY")
+            # send history to compaction model
+            # insert input into session message context
+
+            await self.session_dao.update_compaction_timestamp(self.session_id, response_timestamp)
         self._finish(response)
 
 """

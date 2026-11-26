@@ -73,7 +73,7 @@ async def get_conversation_state(
 ):
     """ returns the session formatted for the frontend."""
     session_dao = request.app.state.session_dao
-    session = await session_dao.get_session(session_id)
+    session = await session_dao.get_session(session_id, include_full_history=True)
 
     # checks if session belongs to user
     if session is None or session.user_id != user_id:

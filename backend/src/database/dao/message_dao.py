@@ -1,3 +1,4 @@
+from datetime import datetime
 from uuid import UUID
 
 from psycopg_pool import AsyncConnectionPool
@@ -11,32 +12,39 @@ class MessageDao:
     def __init__(self, pool: AsyncConnectionPool) -> None:
         self.pool = pool
 
-    async def add_message(self, role: str, content: str, session_id: UUID) -> None:
-        """Add a message to a session."""
+    async def add_message(self, role: str, content: str, session_id: UUID) -> datetime:
+        """Add a message to a session and return its stored creation timestamp."""
         sql = """
             INSERT INTO messages (role, content, session_id)
             VALUES (%s, %s, %s)
+            RETURNING created_at
         """
         async with self.pool.connection() as connection, connection.cursor() as cursor:
             await cursor.execute(sql, (role, content, session_id))
+            row = await cursor.fetchone()
+            if row is None:
+                raise RuntimeError("Message insert did not return a timestamp")
+            return row[0]
 
-    async def get_messages(self, session_id: UUID) -> list[Message]:
-        """Get a list of messages from database given session id"""
+    async def get_messages(self, session_id: UUID, created_after: datetime | None = None) -> list[Message]:
+        """Get a session's messages in order, optionally after a cutoff."""
         sql = """
-            SELECT messages.id, messages.role, messages.content, messages.created_at
-            FROM sessions
-            LEFT JOIN messages ON messages.session_id = sessions.id
-            WHERE sessions.id = %s
-            ORDER BY messages.created_at ASC, messages.id ASC
+            SELECT id, role, content, created_at
+            FROM messages
+            WHERE session_id = %s
         """
+        params = (session_id,)
+        if created_after is not None:
+            sql += " AND created_at > %s"
+            params = (session_id, created_after)
+        sql += " ORDER BY created_at ASC, id ASC"
+
         async with self.pool.connection() as connection, connection.cursor() as cursor:
-            await cursor.execute(sql, (session_id,))
+            await cursor.execute(sql, params)
             rows = await cursor.fetchall()
 
         messages = []
         for row in rows:
-            if row[0] is None:
-                continue
             messages.append(Message(message_id=row[0],
                                     role=row[1],
                                     content=row[2],
