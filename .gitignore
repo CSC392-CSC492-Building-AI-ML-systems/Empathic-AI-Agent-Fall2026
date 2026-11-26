@@ -9,3 +9,6 @@ __pycache__/
 frontend/node_modules/
 frontend/.vite/
 frontend/.vercel/
+
+# Unlabelled replies from the eval collect script
+dataset/collected_replies.jsonl

@@ -166,20 +166,29 @@ class DatasetError(Exception):
 
 def load_cases(path: Path) -> list[EvalCase]:
     """Reads a dataset file, and raises DatasetError listing everything wrong with it"""
+    return load_rows(path, EvalCase, "test cases")
+
+
+def load_rows[Row: BaseModel](path: Path, row_type: type[Row], what: str) -> list[Row]:
+    """Reads a JSONL file where each line is one row with a unique id
+
+    Raises DatasetError listing every problem with its line number and id.
+    `what` names the rows in the error for an empty file, like "test cases".
+    """
     try:
         lines = path.read_text(encoding="utf-8").split("\n")
     except (OSError, UnicodeDecodeError) as error:
         raise DatasetError([f"{path}: can't read file: {error}"]) from error
 
-    cases: list[EvalCase] = []
+    rows: list[Row] = []
     problems: list[str] = []
     first_seen: dict[str, int] = {}
-    saw_a_case = False
+    saw_a_row = False
 
     for number, line in enumerate(lines, start=1):
         if not line.strip():
             continue
-        saw_a_case = True
+        saw_a_row = True
         where = f"{path}:{number}"
 
         try:
@@ -188,25 +197,25 @@ def load_cases(path: Path) -> list[EvalCase]:
             problems.append(f"{where}: not valid JSON: {error}")
             continue
 
-        case_id = data.get("id") if isinstance(data, dict) else None
-        if isinstance(case_id, str):
-            where = f"{where} ({case_id})"
-            if case_id in first_seen:
+        row_id = data.get("id") if isinstance(data, dict) else None
+        if isinstance(row_id, str):
+            where = f"{where} ({row_id})"
+            if row_id in first_seen:
                 problems.append(
-                    f"{where}: id is already used on line {first_seen[case_id]}"
+                    f"{where}: id is already used on line {first_seen[row_id]}"
                 )
-            first_seen.setdefault(case_id, number)
+            first_seen.setdefault(row_id, number)
 
         try:
-            cases.append(EvalCase.model_validate(data))
+            rows.append(row_type.model_validate(data))
         except ValidationError as error:
             problems.extend(_format_error(where, e) for e in error.errors())
 
-    if not saw_a_case:
-        problems.append(f"{path}: file has no test cases")
+    if not saw_a_row:
+        problems.append(f"{path}: file has no {what}")
     if problems:
         raise DatasetError(problems)
-    return cases
+    return rows
 
 
 def _format_error(where: str, error: ErrorDetails) -> str:

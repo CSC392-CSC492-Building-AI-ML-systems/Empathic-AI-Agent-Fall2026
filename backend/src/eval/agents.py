@@ -125,6 +125,19 @@ class Labeller(Protocol):
     async def label(self, history: list[Turn], reply: str) -> Kind: ...
 
 
+def build_messages(prompt: Prompt, history: list[Turn]) -> Messages:
+    """The system prompt, then the conversation in order
+
+    Anything that sends a conversation to the model under test uses this, so
+    the model always sees it the same way.
+    """
+    _check_history(history)
+    return [
+        {"role": "system", "content": prompt.text},
+        *(turn.model_dump() for turn in history),
+    ]
+
+
 def _same_model(a: str, b: str) -> bool:
     return a.strip().lower() == b.strip().lower()
 
@@ -179,11 +192,7 @@ class PromptedAgent:
 
     def build_messages(self, history: list[Turn]) -> Messages:
         """The system prompt, then the conversation in order"""
-        _check_history(history)
-        return [
-            {"role": "system", "content": self.prompt.text},
-            *(turn.model_dump() for turn in history),
-        ]
+        return build_messages(self.prompt, history)
 
     async def respond(self, history: list[Turn]) -> AgentReply:
         response = await self.llm.complete(
