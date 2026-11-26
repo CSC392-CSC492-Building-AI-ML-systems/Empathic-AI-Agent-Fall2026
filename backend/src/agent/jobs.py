@@ -6,11 +6,15 @@ from uuid import UUID
 from ..database.dao.message_dao import MessageDao
 from ..database.dao.session_dao import SessionDao
 from ..database.dao.user_dao import UserDao
+from ..database.model.message import Message
 from ..database.model.session import Session
-from .evaluate_answer import model_decide, model_web_search
+from .context import ContextBuilder
+from .llm import model_decide, model_web_search, model_compact
 from .fine_tune import send_model
+from .worker import logger  # REMOVE LATER
 
-TURN_LIMIT = 10
+TURN_LIMIT = 15
+HISTORY_MESSAGE_LIMIT = 5
 SESSION_CLOSED_REPLY = "This session has been terminated."
 
 @dataclass
@@ -83,6 +87,8 @@ class GenericJob:
 
         if self.turn_count < TURN_LIMIT:
             memories = await self.user_dao.get_memories(session.user_id)
+            for memory_key in memories:
+                memories[memory_key] = memories[memory_key][0]
             if self.turn_count == 0:
                 session = replace(session, memories_at_turn_start=memories.copy())
             tool_context = await self.session_dao.get_tool_context(self.session_id)
@@ -128,9 +134,26 @@ class ResponseJob(GenericJob):
         if not self.session:
             raise RuntimeError("Cannot generate a response without a session")
 
-        tool_context = await self.session_dao.get_tool_context(self.session_id)
-        response = await send_model(self.session, tool_context=tool_context)
-        await self.message_dao.add_message("assistant", response, self.session_id)
+        context_builder = ContextBuilder(message_dao=self.message_dao,
+                                         session_dao=self.session_dao,
+                                         user_dao=self.user_dao,
+                                         session=self.session)
+
+        response = await send_model(context_builder)
+        response_timestamp = await self.message_dao.add_message("assistant", response, self.session_id)
+        self.session.add_message(Message(role="assistant",
+                                         content=response,
+                                         message_id=0,
+                                         created_at=response_timestamp)) #adding dummy message
+        history = self.session.get_conversation_for_model()
+        if len(history) + 1 > HISTORY_MESSAGE_LIMIT:
+
+            logger.warn("===> COMPACTING HISTORY")
+
+            compacted = await model_compact(history=history, curr_context=self.session.message_context) # Should asyncio.gather?
+            logger.warn("=================>" + compacted)
+            await self.session_dao.upsert_message_context(self.session.session_id, compacted)
+            await self.session_dao.update_compaction_timestamp(self.session_id, response_timestamp)
         self._finish(response)
 
 """
@@ -144,7 +167,7 @@ class RemoveMemoryJob(GenericJob):
 
         if not self.session or not self.decision or not self.decision.memory_key:
             raise RuntimeError("Removing a memory requires a session and a decision with a memory key")
-
+        logger.warn("===> REMOVING MEMORY") # REMOVE LATER
         await self.user_dao.remove_memory(self.session.user_id,
                                           self.decision.memory_key)
         await self._decide(self.session)
@@ -160,10 +183,11 @@ class UpdateMemoryJob(GenericJob):
 
         if not self.session or not self.decision or not self.decision.memory_key:
             raise RuntimeError("Updating a memory requires a session and a decision with a memory key")
-
+        logger.warn("===> UPDATING MEMORY: " + self.decision.memory_key + " "+ self.decision.content) # REMOVE LATER
         await self.user_dao.upsert_memory(self.session.user_id,
                                           self.decision.memory_key,
-                                          self.decision.content)
+                                          self.decision.content,
+                                          self.session.session_id)
         await self._decide(self.session)
 
 """
@@ -176,7 +200,7 @@ class WebSearchJob(GenericJob):
     async def run(self):
         if not self.session or not self.decision:
             raise RuntimeError("Web search requires a session and a decision")
-
+        logger.warn("===> SEARCHING WEB") # REMOVE LATER
         result = await model_web_search(self.decision.content)
         await self.session_dao.add_tool_context(self.session_id, result)
         await self._decide(self.session)
@@ -187,7 +211,7 @@ TERMINAL STATE
 Terminates the current session and returns a response to the saved future.
 """
 class TerminateSessionJob(GenericJob):
-
+    logger.warn("===> TERMINATING SESSION") # REMOVE LATER
     async def run(self):
         await self.session_dao.terminate_session(self.session_id)
         self._finish("SESSION-TERMINATED")

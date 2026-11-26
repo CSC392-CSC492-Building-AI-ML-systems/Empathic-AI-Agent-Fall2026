@@ -9,6 +9,7 @@ from pydantic import BaseModel
 
 from ...agent.jobs import GenericJob
 from ..dependencies.auth import get_current_user
+from ...agent.llm import model_get_name
 
 
 class Message(BaseModel):
@@ -32,7 +33,7 @@ async def start_conversation_state(
     session_dao = request.app.state.session_dao
 
     # make session name
-    session_name = await get_session_name(message.message)
+    session_name = await model_get_name(message.message)
 
     async with request.app.state.pool.connection() as conn, conn.cursor() as cursor:
         await cursor.execute("""
@@ -73,7 +74,7 @@ async def get_conversation_state(
 ):
     """ returns the session formatted for the frontend."""
     session_dao = request.app.state.session_dao
-    session = await session_dao.get_session(session_id)
+    session = await session_dao.get_session(session_id, include_full_history=True)
 
     # checks if session belongs to user
     if session is None or session.user_id != user_id:
@@ -157,21 +158,3 @@ async def test_auth(
     return {"authenticated": True, "user_id": str(user_id)}
 
 
-async def get_session_name(msg: str) -> str:
-    """returns a session name given an initial prompt."""
-    # return "temp"
-
-    async with OpenRouter(api_key=os.getenv("OPENROUTER_API_KEY")) as client:
-        response = client.responses.send(
-            model="google/gemini-3.8-flash",  # Replace with any OpenRouter model ID
-            input="Generate a short and simple chat title according to the request:" + msg
-        )
-
-        # Extract the text response
-        for item in response.output:
-            if item.type == "message":
-                for part in item.content:
-                    if part.type == "output_text":
-                        print(part.text)
-                        return part.text
-        return "temp"

@@ -1,3 +1,4 @@
+from datetime import datetime
 from uuid import UUID, uuid4
 
 from psycopg_pool import AsyncConnectionPool
@@ -56,14 +57,14 @@ class SessionDao:
             await cursor.execute(sql, (session_id,))
             return [row[0] for row in await cursor.fetchall()]
 
-    async def get_message_context(self, session_id: UUID) -> str | None:
+    async def get_message_context(self, session_id: UUID) -> str:
         """Return the stored message context, or None if there is none."""
         sql = "SELECT context FROM message_context WHERE session_id = %s"
 
         async with self.pool.connection() as connection, connection.cursor() as cursor:
             await cursor.execute(sql, (session_id,))
             row = await cursor.fetchone()
-        return row[0] if row is not None else None
+        return row[0] if row is not None else ""
 
     async def upsert_message_context(self, session_id: UUID, context: str) -> None:
         """Store or replace the session's message context."""
@@ -76,11 +77,21 @@ class SessionDao:
         async with self.pool.connection() as connection, connection.cursor() as cursor:
             await cursor.execute(sql, (session_id, context))
 
-    async def get_session(self, session_id: UUID) -> Session:
+    async def update_compaction_timestamp(self, session_id: UUID, cutoff: datetime) -> None:
+        """Advance the session's compaction timestamp."""
+        sql = """
+            UPDATE sessions
+            SET compaction_timestamp = %s
+            WHERE id = %s
+        """
+        async with self.pool.connection() as connection, connection.cursor() as cursor:
+            await cursor.execute(sql, (cutoff, session_id))
+
+    async def get_session(self, session_id: UUID, include_full_history: bool = False) -> Session:
         """Form and return a Session object given session id"""
 
         sql = """
-            SELECT s.created_at, s.terminated, s.user_id, s.name, m.context
+            SELECT s.created_at, s.terminated, s.user_id, s.name, m.context, s.compaction_timestamp
             FROM sessions AS s
             LEFT JOIN message_context AS m ON m.session_id = s.id
             WHERE s.id = %s
@@ -91,6 +102,10 @@ class SessionDao:
         if row is None:
             raise KeyError(f"Session {session_id} does not exist")
 
+        created_after = row[5]
+        if include_full_history:
+            created_after = None
+
         return Session(
             session_id=session_id,
             created_at=row[0],
@@ -98,7 +113,7 @@ class SessionDao:
             user_id=row[2],
             name=row[3],
             message_context=row[4],
-            messages=await self.message_dao.get_messages(session_id),
+            messages=await self.message_dao.get_messages(session_id, created_after=created_after),
         )
 
     async def get_session_ids(self, user_id: UUID) -> list[tuple[UUID, str]]:

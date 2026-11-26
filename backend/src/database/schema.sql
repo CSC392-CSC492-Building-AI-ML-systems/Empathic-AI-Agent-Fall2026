@@ -8,6 +8,7 @@ CREATE TABLE sessions (
     id UUID PRIMARY KEY,
     name TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    compaction_timestamp TIMESTAMPTZ,
 
     user_id UUID NOT NULL,
     terminated BOOLEAN NOT NULL DEFAULT false,
@@ -31,6 +32,7 @@ CREATE TABLE user_memories (
     user_id UUID NOT NULL,
     memory_key TEXT NOT NULL,
     content TEXT NOT NULL,
+    session_id UUID NOT NULL,
 
     PRIMARY KEY (user_id, memory_key),
     FOREIGN KEY (user_id) REFERENCES users(id)
