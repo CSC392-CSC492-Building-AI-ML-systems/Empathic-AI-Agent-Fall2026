@@ -56,14 +56,14 @@ class SessionDao:
             await cursor.execute(sql, (session_id,))
             return [row[0] for row in await cursor.fetchall()]
 
-    async def get_message_context(self, session_id: UUID) -> str | None:
+    async def get_message_context(self, session_id: UUID) -> str:
         """Return the stored message context, or None if there is none."""
         sql = "SELECT context FROM message_context WHERE session_id = %s"
 
         async with self.pool.connection() as connection, connection.cursor() as cursor:
             await cursor.execute(sql, (session_id,))
             row = await cursor.fetchone()
-        return row[0] if row is not None else None
+        return row[0] if row is not None else ""
 
     async def upsert_message_context(self, session_id: UUID, context: str) -> None:
         """Store or replace the session's message context."""
