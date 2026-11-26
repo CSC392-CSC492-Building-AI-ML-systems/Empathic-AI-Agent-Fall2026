@@ -87,6 +87,17 @@ def test_load_prompt_reads_the_real_first_version() -> None:
     assert prompt.text == prompt.text.strip()
 
 
+def test_load_prompt_reads_the_real_labeller_prompt() -> None:
+    """The labeller's first prompt asks for a reason and a clarify/answer kind"""
+
+    prompt = load_prompt("v001", name="labeller")
+
+    assert prompt.name == "labeller"
+    assert '"kind": "clarify"' in prompt.text
+    assert '"kind": "answer"' in prompt.text
+    assert '"reason"' in prompt.text
+
+
 def test_load_prompt_from_another_folder(tmp_path: Path) -> None:
     """Prompts can be loaded from any folder, which keeps these tests simple"""
 
