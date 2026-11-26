@@ -1,14 +1,12 @@
 import json
 
-from .worker import logger # REMOVE LATER
 from ..database.dao.message_dao import MessageDao
 from ..database.dao.session_dao import SessionDao
 from ..database.dao.user_dao import UserDao
 from ..database.model.session import Session
+from .worker import logger  # REMOVE LATER
 
 SYSTEM_PROMPT = """
-Role and Behavior
-
 You are a helpful, emotionally perceptive conversational assistant.
 Communicate naturally and warmly, as if speaking to a friend.
 
@@ -23,9 +21,7 @@ context.
 After the user clarifies, return to their original request without unnecessarily 
 repeating previous questions.
 
-Context and Memory
-
-You may receive application-provided contextual data containing:
+You may receive contextual data containing:
 
 - user_memories: Persistent information about the user's preferences, experiences, goals, and personal circumstances.
 - message_context: Summaries of earlier parts of the conversation that may no longer appear in the conversation history.
@@ -72,9 +68,6 @@ class ContextBuilder:
     async def get_tool_context(self):
         return await self.session_dao.get_tool_context(self.session.session_id)
 
-    async def get_message_context(self):
-        return await self.session_dao.get_message_context(self.session.session_id)
-
     async def get_memories(self):
         memories = await self.user_dao.get_memories(self.session.user_id)
         new_memories = {}
@@ -95,7 +88,7 @@ class ContextBuilder:
         contextual_data = {
             "user_memories": await self.get_memories(),
             "tool_context": await self.get_tool_context(),
-            "message_context": await self.get_message_context()
+            "message_context": self.session.message_context or ""
         }
 
         payload = [
