@@ -51,6 +51,9 @@ file with the next number instead of editing an old one, so a run's prompt
 version always points to the exact text it used. `load_prompt("v001")` reads
 one.
 
+Other kinds of prompts follow the same rules, named `<name>_v001.md`, and are
+loaded with `load_prompt("v001", name="labeller")`.
+
 `clarifier_v001.md` is a copy of the system prompt the app uses today, so the
 first runs measure what the app ships.
 

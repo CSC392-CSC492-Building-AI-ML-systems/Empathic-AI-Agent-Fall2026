@@ -82,6 +82,7 @@ def test_load_prompt_reads_the_real_first_version() -> None:
     prompt = load_prompt("v001")
 
     assert prompt.version == "v001"
+    assert prompt.name == "clarifier"
     assert prompt.text.startswith("You are a helpful conversational assistant.")
     assert prompt.text == prompt.text.strip()
 
@@ -101,6 +102,46 @@ def test_load_prompt_missing_version_lists_what_exists(tmp_path: Path) -> None:
 
     with pytest.raises(FileNotFoundError, match="Found: v001"):
         load_prompt("v009", tmp_path)
+
+
+def test_load_prompt_by_name(tmp_path: Path) -> None:
+    """Other kinds of prompts sit next to the clarifier ones, picked by name"""
+
+    (tmp_path / "clarifier_v001.md").write_text("Clarify.")
+    (tmp_path / "labeller_v001.md").write_text("Label.")
+
+    prompt = load_prompt("v001", tmp_path, name="labeller")
+
+    assert prompt.text == "Label."
+    assert prompt.name == "labeller"
+    assert load_prompt("v001", tmp_path).text == "Clarify."
+
+
+def test_load_prompt_missing_version_lists_only_that_name(tmp_path: Path) -> None:
+    """The versions listed in the error are only the ones with the same name"""
+
+    (tmp_path / "clarifier_v001.md").write_text("Hi")
+    (tmp_path / "labeller_v002.md").write_text("Hi")
+
+    with pytest.raises(FileNotFoundError, match="Found: v002$"):
+        load_prompt("v009", tmp_path, name="labeller")
+
+
+def test_load_prompt_missing_name_says_none_found(tmp_path: Path) -> None:
+    """A name with no files at all says so, instead of listing other names"""
+
+    (tmp_path / "clarifier_v001.md").write_text("Hi")
+
+    with pytest.raises(FileNotFoundError, match="Found: none"):
+        load_prompt("v001", tmp_path, name="judge")
+
+
+@pytest.mark.parametrize("name", ["", "Labeller", "../clarifier", "label-er", "a_"])
+def test_load_prompt_rejects_badly_named_prompts(name: str) -> None:
+    """Only lowercase names are allowed, so nothing outside prompts/ gets read"""
+
+    with pytest.raises(ValueError, match="should look like clarifier"):
+        load_prompt("v001", name=name)
 
 
 @pytest.mark.parametrize("version", ["1", "v1", "v001.md", "../v001", "v001\n"])

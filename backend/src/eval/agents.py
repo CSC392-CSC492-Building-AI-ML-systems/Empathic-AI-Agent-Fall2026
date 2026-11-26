@@ -22,39 +22,45 @@ from .llm import LLMClient, Messages
 
 PROMPTS_DIR = Path(__file__).resolve().parents[3] / "prompts"
 PROMPT_VERSION = re.compile(r"v\d{3}")
+PROMPT_NAME = re.compile(r"[a-z]+(_[a-z]+)*")
 
 
 class Prompt(BaseModel):
-    """A system prompt and the version it came from"""
+    """A system prompt, which kind it is, and the version it came from"""
 
     version: str
     text: str
+    name: str = "clarifier"
 
 
-def load_prompt(version: str, prompts_dir: Path = PROMPTS_DIR) -> Prompt:
-    """Loads prompts/clarifier_<version>.md, like load_prompt("v001")
+def load_prompt(
+    version: str, prompts_dir: Path = PROMPTS_DIR, *, name: str = "clarifier"
+) -> Prompt:
+    """Loads prompts/<name>_<version>.md, like load_prompt("v001")
 
-    Each change to the prompt goes in a new file with the next version number,
+    Each change to a prompt goes in a new file with the next version number,
     and old files are never edited, so a run's prompt version always points to
-    the exact text it used.
+    the exact text it used. Other kinds of prompts, like the labeller's, live
+    next to the clarifier ones and are loaded with name="labeller".
     """
+    if not PROMPT_NAME.fullmatch(name):
+        raise ValueError(f"Prompt name should look like clarifier, not {name!r}")
     if not PROMPT_VERSION.fullmatch(version):
         raise ValueError(f"Prompt version should look like v001, not {version!r}")
 
-    path = prompts_dir / f"clarifier_{version}.md"
+    path = prompts_dir / f"{name}_{version}.md"
     if not path.is_file():
         found = sorted(
-            p.stem.removeprefix("clarifier_")
-            for p in prompts_dir.glob("clarifier_v*.md")
+            p.stem.removeprefix(f"{name}_") for p in prompts_dir.glob(f"{name}_v*.md")
         )
         raise FileNotFoundError(
-            f"No prompt {version} at {path}. Found: {', '.join(found) or 'none'}"
+            f"No {name} prompt {version} at {path}. Found: {', '.join(found) or 'none'}"
         )
 
     text = path.read_text(encoding="utf-8").strip()
     if not text:
         raise ValueError(f"{path} is empty")
-    return Prompt(version=version, text=text)
+    return Prompt(version=version, text=text, name=name)
 
 
 class AgentInfo(BaseModel):
