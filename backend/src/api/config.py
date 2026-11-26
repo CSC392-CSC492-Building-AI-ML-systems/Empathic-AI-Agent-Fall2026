@@ -6,8 +6,6 @@ class Settings(BaseSettings):
     hf_token: str = ""
     openai_api_key: str = ""
     decision_model: str = "gpt-6-luna"
-    postgres_user: str | None = None
-    database_url: str | None = None
     supabase_url: str
     supabase_publishable_key: str
 

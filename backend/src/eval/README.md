@@ -29,14 +29,30 @@ Clarification Service can use it too.
   and the test cases are in [`dataset/cases.jsonl`](../../../dataset/cases.jsonl)
 - `replay.py`: plays a test case back like a chat, one message per key press,
   then shows its labels (`uv run python -m backend.src.eval.replay 3`)
+- `agents.py`: the agents under test. `AlwaysAnswerAgent` and `AlwaysAskAgent`
+  are baselines at either end of the clarify/answer range, and a real agent
+  has to beat both. `PromptedAgent` sends the conversation to a model with a
+  versioned prompt, and a labeller decides whether its plain text reply asks
+  or answers. Each agent has an `info` with what a run should record about it
 
 Still to come as the eval issues land:
 
-- Agents under test (prompted stub agent, baselines)
+- The real labeller, a separate fixed model checked against hand labels (#45)
 - Runner and run logs
 - Metrics and reports (over-/under-clarification, question quality, end-to-end)
 
 Tests live in [`tests/eval/`](../../../tests/eval/).
+
+## Prompts
+
+System prompts live in [`prompts/`](../../../prompts/), one file per version
+(`clarifier_v001.md`, `clarifier_v002.md`, ...). To change a prompt, add a new
+file with the next number instead of editing an old one, so a run's prompt
+version always points to the exact text it used. `load_prompt("v001")` reads
+one.
+
+`clarifier_v001.md` is a copy of the system prompt the app uses today, so the
+first runs measure what the app ships.
 
 ## Running against a real model
 

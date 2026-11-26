@@ -18,6 +18,7 @@ class Worker:
                 await job.run()
             except Exception as error:
                 logger.exception("Worker failed to process a job")
-                job.response_future.set_exception(error)
+                if not job.response_future.done():
+                    job.response_future.set_exception(error)
             finally:
                 self.queue.task_done()

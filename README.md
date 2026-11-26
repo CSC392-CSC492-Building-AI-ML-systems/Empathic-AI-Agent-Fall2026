@@ -16,37 +16,32 @@ Build an AI Coach prototype that asks helpful questions before responding. The p
 - [ ] Add empathetic phrasing techniques
 - [ ] Explore integration into open-source instruction-tuning pipelines
 
-## Status
-
-PostgreSQL and schema migrations have been added. 
-
 ## Getting Started
 
-Create `.env` from `.env.example` if you do not already have one, and set your own PostgreSQL password.
+Create a `.env` from `.env.example` if you do not already have one.
+
 ```powershell
 Copy-Item .env.example .env
 ```
 
-After setting the password, run:
+The application tables are defined in
+[`backend/src/database/schema.sql`](backend/src/database/schema.sql) and managed
+in the hosted database.
+
+### Start the backend
+
+Run from the repository root.
 
 ```powershell
 docker compose up -d --build
 ```
 
-Compose waits for PostgreSQL, then applies SQL migrations.
-The database code has two parts:
+The backend listens at `http://127.0.0.1:8000` and connects to hosted Supabase.
 
-- `backend/src/database/connection.py` builds connections from environment variables.
-- `backend/src/database/migrations/` contains numbered SQL files. When you want to change the schema, add a new file. DO NOT modify an existing migration.
-
-Migrations run as a separate Compose service. To apply a new migration without rebuilding the backend, run `docker compose run --rm --build migrate`.
-
-### How To View Frontend Prototype
+### Start the frontend
 
 ```powershell
 cd frontend
 npm install
 npm run dev
 ```
-
-or view at [temporary](https://sam-the-empathetic-ai.vercel.app/)
