@@ -7,10 +7,12 @@ from backend.src.clarification import Agent, AgentReply, Kind, Turn
 from backend.src.eval.agents import (
     AlwaysAnswerAgent,
     AlwaysAskAgent,
+    LabellerInfo,
     Prompt,
     PromptedAgent,
     load_prompt,
 )
+from backend.src.eval.labeller import LLMLabeller
 from backend.src.eval.llm import LLMError, LLMResponse, Messages
 from backend.src.eval.mock import MockLLMClient
 
@@ -20,8 +22,9 @@ PROMPT = Prompt(version="v123", text="Ask when you need to, answer when you can.
 class FakeLabeller:
     """Gives every reply the same kind, and records what it was asked"""
 
-    def __init__(self, kind: Kind) -> None:
+    def __init__(self, kind: Kind, model: str = "fake-labeller") -> None:
         self.kind = kind
+        self.info = LabellerInfo(prompt_version="v999", model=model)
         self.calls: list[tuple[list[Turn], str]] = []
 
     async def label(self, history: list[Turn], reply: str) -> Kind:
@@ -232,6 +235,54 @@ def test_prompted_agent_info_for_run_logs() -> None:
     assert agent.info.name == "prompted"
     assert agent.info.prompt_version == "v123"
     assert (agent.info.model, agent.info.temperature) == ("m", 0.3)
+    assert agent.info.labeller == LabellerInfo(
+        prompt_version="v999", model="fake-labeller"
+    )
+
+
+@pytest.mark.parametrize("model", ["judge/model", " Judge/Model "])
+def test_prompted_agent_refuses_its_own_model_as_labeller(model: str) -> None:
+    """A model never labels its own replies, even with different spacing or case"""
+
+    with pytest.raises(ValueError, match="can't use the model being tested"):
+        PromptedAgent(
+            MockLLMClient(), FakeLabeller("answer", "judge/model"), PROMPT, model=model
+        )
+
+
+def test_prompted_agent_checks_the_model_that_replied(
+    mock_llm: MockLLMClient,
+) -> None:
+    """With no model given, the client picks one, so each reply is checked too"""
+
+    mock_llm.add_replies("Here's a plan.")
+    labeller = FakeLabeller("answer", model="mock")
+    agent = PromptedAgent(mock_llm, labeller, PROMPT)
+
+    with pytest.raises(ValueError, match=r"model being tested \(mock\)"):
+        asyncio.run(agent.respond(ONE_MESSAGE))
+    assert labeller.calls == []
+
+
+def test_prompted_agent_with_the_real_labeller() -> None:
+    """The agent and the LLM labeller work together, each with its own model"""
+
+    agent_llm = MockLLMClient(["Sorry to hear that. What part felt worst?"])
+    labeller_llm = MockLLMClient(['{"reason": "Asks a question.", "kind": "clarify"}'])
+    labeller = LLMLabeller(
+        labeller_llm, "judge/model", load_prompt("v001", name="labeller")
+    )
+    agent = PromptedAgent(agent_llm, labeller, PROMPT, model="agent/model")
+
+    reply = asyncio.run(agent.respond(ONE_MESSAGE))
+
+    assert reply == AgentReply(
+        kind="clarify", content="Sorry to hear that. What part felt worst?"
+    )
+    assert agent_llm.calls[0].model == "agent/model"
+    assert labeller_llm.calls[0].model == "judge/model"
+    assert "Sorry to hear that." in labeller_llm.calls[0].messages[1]["content"]
+    assert agent.info.labeller == labeller.info
 
 
 def test_prompted_agent_lets_model_errors_through() -> None:

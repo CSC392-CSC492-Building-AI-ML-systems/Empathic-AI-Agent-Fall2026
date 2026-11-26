@@ -63,6 +63,13 @@ def load_prompt(
     return Prompt(version=version, text=text, name=name)
 
 
+class LabellerInfo(BaseModel):
+    """Which labeller made the labels, so a run can record it"""
+
+    prompt_version: str
+    model: str
+
+
 class AgentInfo(BaseModel):
     """What an agent is and how it was set up, so a run can record it"""
 
@@ -70,6 +77,7 @@ class AgentInfo(BaseModel):
     prompt_version: str | None = None
     model: str | None = None
     temperature: float | None = None
+    labeller: LabellerInfo | None = None
 
 
 def _check_history(history: list[Turn]) -> None:
@@ -108,10 +116,26 @@ class Labeller(Protocol):
 
     It gets the conversation too, since whether a reply counts as asking can
     depend on what came before. It should follow the mixed replies rule in
-    dataset/README.md, and should never be the model being tested.
+    dataset/README.md, and should never be the model being tested, so it says
+    which model it uses in info.
     """
 
+    info: LabellerInfo
+
     async def label(self, history: list[Turn], reply: str) -> Kind: ...
+
+
+def _same_model(a: str, b: str) -> bool:
+    return a.strip().lower() == b.strip().lower()
+
+
+def _check_labeller_model(labeller: Labeller, model: str) -> None:
+    """Stops a model from labelling its own replies"""
+    if _same_model(labeller.info.model, model):
+        raise ValueError(
+            f"The labeller can't use the model being tested ({model}). "
+            "Pick a different model for one of them"
+        )
 
 
 class PromptedAgent:
@@ -120,6 +144,10 @@ class PromptedAgent:
     The reply's text is kept exactly as the model wrote it, and the labeller
     decides its kind. Errors from the model client are not caught, so the
     runner can count them.
+
+    The labeller can't use the same model as the agent. That's checked when
+    the agent is made, if a model is given, and again on every reply, since
+    without one the client uses MODEL from .env.
     """
 
     def __init__(
@@ -132,6 +160,9 @@ class PromptedAgent:
         temperature: float = 0.0,
         max_tokens: int = 1024,
     ) -> None:
+        if model is not None:
+            _check_labeller_model(labeller, model)
+
         self.llm = llm
         self.labeller = labeller
         self.prompt = prompt
@@ -143,6 +174,7 @@ class PromptedAgent:
             prompt_version=prompt.version,
             model=model,
             temperature=temperature,
+            labeller=labeller.info,
         )
 
     def build_messages(self, history: list[Turn]) -> Messages:
@@ -160,5 +192,6 @@ class PromptedAgent:
             temperature=self.temperature,
             max_tokens=self.max_tokens,
         )
+        _check_labeller_model(self.labeller, response.model)
         kind = await self.labeller.label(history, response.text)
         return AgentReply(kind=kind, content=response.text)

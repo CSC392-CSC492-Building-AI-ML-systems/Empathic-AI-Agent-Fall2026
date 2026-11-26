@@ -16,7 +16,7 @@ from typing import get_args
 from pydantic import BaseModel
 
 from ..clarification import Kind, Turn
-from .agents import Prompt
+from .agents import LabellerInfo, Prompt
 from .llm import LLMClient, Messages
 
 KINDS: tuple[str, ...] = get_args(Kind)
@@ -26,13 +26,6 @@ CODE_FENCE = re.compile(r"^```(?:json)?\s*(.*?)\s*```$", re.DOTALL)
 
 class LabelError(RuntimeError):
     """The labeller didn't give back a usable label"""
-
-
-class LabellerInfo(BaseModel):
-    """Which labeller made the labels, so a run can record it"""
-
-    prompt_version: str
-    model: str
 
 
 class Label(BaseModel):
