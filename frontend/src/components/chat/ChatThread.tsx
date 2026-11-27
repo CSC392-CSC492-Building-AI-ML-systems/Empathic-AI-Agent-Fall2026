@@ -17,7 +17,6 @@ interface ChatThreadProps {
 
 interface MenuState { x: number; y: number; index: number }
 
-// roughly the menu's min width (min-w-48), used to line it up under the "..." button
 const MENU_WIDTH = 192;
 
 export function ChatThread({
@@ -34,8 +33,19 @@ export function ChatThread({
 	const containerRef = useRef<HTMLDivElement>(null);
 	const [menu, setMenu] = useState<MenuState | null>(null);
 
-	// scroll ONLY this list. scrollIntoView also scrolls the overflow-hidden parents,
-	// which pushes the input bar to the top of the screen.
+	const [toast, setToast] = useState<string | null>(null);
+	const toastTimer = useRef<number | undefined>(undefined);
+
+	// show the msg
+	const showToast = (text: string) => {
+		setToast(text);
+		window.clearTimeout(toastTimer.current);
+		toastTimer.current = window.setTimeout(() => setToast(null), 1800);
+	};
+
+	useEffect(() => () => window.clearTimeout(toastTimer.current), []);
+
+	// autoscroll to bottom of chat
 	const scrollToBottom = () => {
 		const el = containerRef.current;
 		if (el) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
@@ -45,7 +55,7 @@ export function ChatThread({
 		scrollToBottom();
 	}, [messages, isTyping]);
 
-	// opened by right-click (at the cursor) or by the "..." button (under the button)
+	// right click to show menu or the ... on phones
 	const openMenu = (e: MouseEvent<HTMLElement>, index: number) => {
 		e.preventDefault();
 		if (e.type === 'contextmenu') {
@@ -63,7 +73,16 @@ export function ChatThread({
 			{
 				// copy text to clipboard
 				label: 'Copy message',
-				onSelect: () => navigator.clipboard?.writeText(msg.text),
+				onSelect: () => {
+					if (!navigator.clipboard) {
+						showToast("Copying isn't available here");
+						return;
+					}
+					navigator.clipboard
+						.writeText(msg.text)
+						.then(() => showToast('Copied to clipboard'))
+						.catch(() => showToast("Couldn't copy that"));
+				},
 			},
 			{
 				// branching off to create a new chat
@@ -80,7 +99,7 @@ export function ChatThread({
 			ref={containerRef}
 			role="log"
 			aria-live="polite"
-			className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-8 py-8 space-y-6 max-w-4xl w-full mx-auto"
+			className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-8 py-6 sm:py-8 space-y-5 sm:space-y-6 max-w-4xl w-full mx-auto"
 		>
 			{messages.map((msg, index) => (
 				<ChatBubble
@@ -107,6 +126,15 @@ export function ChatThread({
 					items={buildMenuItems(menu.index)}
 					onClose={() => setMenu(null)}
 				/>
+			)}
+
+			{toast && (
+				<div
+					role="status"
+					className="animate-toast-in fixed bottom-28 left-1/2 z-50 px-4 py-2 rounded-full bg-gray-900 text-white dark:bg-slate-100 dark:text-slate-900 text-sm font-medium shadow-lg"
+				>
+					{toast}
+				</div>
 			)}
 		</div>
 	);

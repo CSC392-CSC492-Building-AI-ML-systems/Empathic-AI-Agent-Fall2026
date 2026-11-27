@@ -10,3 +10,40 @@ body {
   	margin: 0;
 }
 @layer base { *, *::before, *::after { border-width: 0; } }
+
+
+/* new messages fade and rise slightly */
+@keyframes message-in {
+	from { opacity: 0; transform: translateY(8px); }
+	to   { opacity: 1; transform: translateY(0); }
+}
+
+/* right-click / "..." menu pops in */
+@keyframes menu-in {
+	from { opacity: 0; transform: scale(0.96); }
+	to   { opacity: 1; transform: scale(1); }
+}
+
+/* "Copied to clipboard" message */
+@keyframes toast-in {
+	from { opacity: 0; transform: translate(-50%, 8px); }
+	to   { opacity: 1; transform: translate(-50%, 0); }
+}
+
+.animate-message-in { animation: message-in 0.25s ease-out both; }
+.animate-menu-in    { animation: menu-in 0.12s ease-out both; transform-origin: top right; }
+.animate-toast-in   { animation: toast-in 0.2s ease-out both; }
+
+/* people who prefer less motion get no animation */
+@media (prefers-reduced-motion: reduce) {
+	.animate-message-in,
+	.animate-menu-in,
+	.animate-toast-in { animation: none; }
+}
+
+/* no gray flash when tapping buttons on phones */
+html { -webkit-tap-highlight-color: transparent; }
+
+/* slim, quiet scrollbars instead of the chunky default */
+html { scrollbar-width: thin; scrollbar-color: rgb(156 163 175 / 0.5) transparent; }
+.dark, .dark * { scrollbar-color: rgb(71 85 105 / 0.7) transparent; }

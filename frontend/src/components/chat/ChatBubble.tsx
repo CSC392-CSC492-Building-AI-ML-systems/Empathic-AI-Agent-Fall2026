@@ -1,7 +1,9 @@
-import ReactMarkdown, { Components } from 'react-markdown';
+import ReactMarkdown from 'react-markdown';
+import type { Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import type { MouseEvent } from 'react';
 import { HeartIcon, UserIcon, MoreIcon } from '../buttons/Icons';
+import { IconButton } from '../buttons/IconButton';
 import type { Sender } from '../../types/chat';
 
 const MARKDOWN_COMPONENTS: Components = {
@@ -71,18 +73,18 @@ interface ChatBubbleProps {
 	onMenuClick?: (e: MouseEvent<HTMLButtonElement>) => void;
 }
 
-export function ChatBubble({ 
-	sender, 
-	text, 
-	timestamp, 
-	samPFP = null, 
-	userPFP = null, 
-	samName = 'Sam', 
-	username = 'User',
+export function ChatBubble({
+	sender,
+	text,
+	timestamp,
+	samPFP = null,
+	userPFP = null,
+	samName = 'Sam',
+	username = 'You',
 	onContextMenu,
-	onMenuClick
-	}: ChatBubbleProps) {
-
+	onMenuClick,
+}: ChatBubbleProps) {
+	
 	const isBot = sender === 'sam';
 
 	// adding in a place for time
@@ -91,11 +93,11 @@ export function ChatBubble({
 		: '';
 
 	return (
-		<div className={`flex flex-col ${isBot ? 'items-start' : 'items-end'}`}>
+		<div className={`animate-message-in flex flex-col ${isBot ? 'items-start' : 'items-end'}`}>
 			<div
 				onContextMenu={onContextMenu}
 				className={`max-w-xl rounded-2xl px-5 py-4 shadow-xs space-y-2 ${
-					isBot ? 'w-full' : 'w-fit min-width:10rem'
+					isBot ? 'w-full' : 'w-fit min-w-40'
 				} ${
 					isBot
 						? 'bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700/70'
@@ -136,15 +138,9 @@ export function ChatBubble({
 							<span className="text-xs text-gray-500 dark:text-slate-400">{formattedTime}</span>
 						)}
 						{onMenuClick && (
-							<button
-								type="button"
-								onClick={onMenuClick}
-								aria-label="Message options"
-								title="Message options"
-								className="p-1 -mr-1 rounded-full text-gray-400 hover:text-gray-700 hover:bg-black/5 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-white/10 transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/60"
-							>
+							<IconButton label="Message options" size="sm" onClick={onMenuClick} className="-mr-1">
 								<MoreIcon />
-							</button>
+							</IconButton>
 						)}
 					</div>
 				</div>

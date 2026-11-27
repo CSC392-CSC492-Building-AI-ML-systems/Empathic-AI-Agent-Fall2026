@@ -1,5 +1,8 @@
-import { ChangeEvent, SyntheticEvent, useState } from 'react';
+import { useState } from 'react';
+import type { ChangeEvent, SyntheticEvent } from 'react';
 import type { Theme } from '../../types/chat';
+import { Button } from '../buttons/Button';
+import { PRESS, FOCUS, CARD, PAGE, PAGE_INNER, HEADING, SUBTEXT } from '../buttons/styles';
 
 interface PFPChooserProps {
 	title: string;
@@ -27,37 +30,23 @@ const makeEmojiAvatar = (emoji: string, bgColor: string) =>
 	)}`;
 
 const PFP_PRESETS = [
-	{
-		id: 'happy',
-		label: 'Happy',
-		src: makeEmojiAvatar('😃', '#fef3c7'),
-	},
-	{
-		id: 'smile',
-		label: 'Smile',
-		src: makeEmojiAvatar('😊', '#e0f2fe'),
-	},
-	{
-		id: 'muscles',
-		label: 'Muscles',
-		src: makeEmojiAvatar('💪', '#ede9fe'),
-	},
+	{ id: 'happy', label: 'Happy', src: makeEmojiAvatar('😃', '#fef3c7') },
+	{ id: 'smile', label: 'Smile', src: makeEmojiAvatar('😊', '#e0f2fe') },
+	{ id: 'muscles', label: 'Muscles', src: makeEmojiAvatar('💪', '#ede9fe') },
 ];
 
-const CARD = 'bg-white dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700/60 rounded-2xl py-7 px-8 shadow-xs';
-const FOCUS = 'focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/60';
-const PRIMARY_BTN = `px-5 py-2.5 rounded-xl text-sm font-medium bg-gray-900 text-white dark:bg-indigo-500 dark:text-white hover:opacity-90 transition cursor-pointer shrink-0 ${FOCUS}`;
-const LINK_BTN = `text-sm font-medium text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white underline underline-offset-2 rounded cursor-pointer ${FOCUS}`;
+const CARD_PADDING = 'p-5 sm:p-8';
+const FIELD =
+	'flex-1 min-w-0 bg-gray-50 dark:bg-slate-900/70 border border-gray-200 dark:border-slate-700 rounded-full px-5 py-2.5 text-base text-gray-900 dark:text-slate-100 placeholder-gray-500 dark:placeholder-slate-500 focus:outline-none focus:border-purple-500 focus:ring-4 focus:ring-purple-500/15 dark:focus:border-indigo-400 dark:focus:ring-indigo-400/20 transition';
 
 // for choosing pfp's for sam or the user
-function PFPChooser({ 
-	title, 
+function PFPChooser({
+	title,
 	description,
-	currentPFP, 
-	onSelectPFP, 
-	resetLabel = 'Reset to default icon'
+	currentPFP,
+	onSelectPFP,
+	resetLabel = 'Reset to default icon',
 }: PFPChooserProps) {
-
 	const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
 		const file = e.target.files?.[0];
 		if (!file || !file.type.startsWith('image/')) return;
@@ -73,21 +62,21 @@ function PFPChooser({
 	};
 
 	return (
-		<div className={`${CARD} space-y-5`}>
-			<div className="flex flex-wrap items-start justify-between gap-4">
+		<div className={`${CARD} ${CARD_PADDING} space-y-5`}>
+			<div className="flex flex-wrap items-start justify-between gap-3">
 				<div className="space-y-1">
 					<h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100">{title}</h2>
 					{description && <p className="text-sm text-gray-500 dark:text-slate-400">{description}</p>}
 				</div>
 
 				{currentPFP && (
-					<button type="button" onClick={() => onSelectPFP?.(null)} className={LINK_BTN}>
+					<Button variant="ghost" size="sm" onClick={() => onSelectPFP?.(null)}>
 						{resetLabel}
-					</button>
+					</Button>
 				)}
 			</div>
 
-			<div className="flex flex-wrap items-center gap-4">
+			<div className="flex flex-wrap items-center gap-3 sm:gap-4">
 				{PFP_PRESETS.map((preset) => {
 					const isSelected = currentPFP === preset.src;
 					return (
@@ -98,7 +87,7 @@ function PFPChooser({
 							title={preset.label}
 							aria-label={preset.label}
 							aria-pressed={isSelected}
-							className={`p-1 rounded-full border-2 transition-all cursor-pointer ${FOCUS} ${
+							className={`p-1 rounded-full border-2 cursor-pointer ${PRESS} ${FOCUS} ${
 								isSelected
 									? 'border-purple-600 dark:border-indigo-400 scale-105'
 									: 'border-transparent hover:border-gray-300 dark:hover:border-slate-600'
@@ -109,7 +98,9 @@ function PFPChooser({
 					);
 				})}
 
-				<label className="px-4 py-2.5 rounded-xl text-sm font-medium border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-700/60 transition-colors cursor-pointer has-focus-visible:ring-2 has-focus-visible:ring-purple-500/60">
+				<label
+					className={`px-4 py-2 rounded-full text-sm font-medium border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-700/60 cursor-pointer has-focus-visible:ring-2 has-focus-visible:ring-purple-500/60 ${PRESS}`}
+				>
 					Upload image
 					{/* sr-only (not hidden) so keyboard users can still reach it */}
 					<input type="file" accept="image/*" onChange={handleFileChange} className="sr-only" />
@@ -120,18 +111,17 @@ function PFPChooser({
 }
 
 export function SettingsView({
-	onBackToChat, 
-	theme = 'light', 
-	onToggleTheme, 
-	samPFP = null, 
-	onSelectSamPFP, 
-	userPFP = null, 
+	onBackToChat,
+	theme = 'light',
+	onToggleTheme,
+	samPFP = null,
+	onSelectSamPFP,
+	userPFP = null,
 	onSelectUserPFP,
 	samName = 'Sam',
-	onChangeSamName
+	onChangeSamName,
 }: SettingsViewProps) {
-
-    const isDark = theme === 'dark';
+	const isDark = theme === 'dark';
 	const [nameInput, setNameInput] = useState(samName);
 	const [savedNotice, setSavedNotice] = useState(false);
 
@@ -149,45 +139,53 @@ export function SettingsView({
 		setNameInput('Sam');
 	};
 
-    return (
-		<div className="flex-1 overflow-y-auto">
-			<div className="px-6 sm:px-12 py-10 max-w-3xl w-full mx-auto">
-				<h1 className="text-3xl font-bold text-gray-900 dark:text-slate-100 mb-2">Settings</h1>
-				<p className="text-base text-gray-600 dark:text-slate-400 mb-8">Customize :D</p>
+	return (
+		<div className={PAGE}>
+			<div className={PAGE_INNER}>
+				<h1 className={`${HEADING} mb-2`}>Settings</h1>
 
-				<div className="space-y-6">
+				<div className="space-y-5 sm:space-y-6">
 					{/* light/dark mode */}
-					<div className={`${CARD} flex flex-wrap items-center justify-between gap-6`}>
+					<div className={`${CARD} ${CARD_PADDING} flex items-center justify-between gap-6`}>
 						<div className="space-y-1">
-							<h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100">Appearance</h2>
+							<h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100">Dark mode</h2>
 							<p className="text-sm text-gray-500 dark:text-slate-400">
-								Currently {isDark ? 'Dark' : 'Light'} mode.
+								{isDark ? 'On. Easier on the eyes at night.' : 'Off. Switch it on for a darker look.'}
 							</p>
 						</div>
 
 						<button
 							type="button"
+							role="switch"
+							aria-checked={isDark}
+							aria-label="Dark mode"
 							onClick={onToggleTheme}
-							className={`px-6 py-3 rounded-xl text-sm font-medium bg-gray-900 text-white dark:bg-indigo-500 dark:text-white hover:opacity-90 transition cursor-pointer shrink-0 ${FOCUS}`}
+							className={`relative w-14 h-8 rounded-full shrink-0 cursor-pointer transition-colors duration-200 motion-reduce:transition-none ${FOCUS} ${
+								isDark ? 'bg-indigo-500' : 'bg-gray-300'
+							}`}
 						>
-							Switch to {isDark ? 'light' : 'dark'} mode
+							<span
+								className={`absolute top-1 left-1 w-6 h-6 rounded-full bg-white shadow transition-transform duration-200 motion-reduce:transition-none ${
+									isDark ? 'translate-x-6' : 'translate-x-0'
+								}`}
+							/>
 						</button>
 					</div>
 
 					{/* sam's (agent's) name */}
-					<div className={`${CARD} space-y-4`}>
-						<div className="flex flex-wrap items-start justify-between gap-4">
+					<div className={`${CARD} ${CARD_PADDING} space-y-4`}>
+						<div className="flex flex-wrap items-start justify-between gap-3">
 							<div className="space-y-1">
 								<h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100">Agent name</h2>
 								<p className="text-sm text-gray-500 dark:text-slate-400">
-									What would you like to call your assistant?
+									What are you talking to?
 								</p>
 							</div>
 
 							{samName !== 'Sam' && (
-								<button type="button" onClick={handleResetName} className={LINK_BTN}>
+								<Button variant="ghost" size="sm" onClick={handleResetName}>
 									Reset to default
-								</button>
+								</Button>
 							)}
 						</div>
 
@@ -199,16 +197,16 @@ export function SettingsView({
 								maxLength={30}
 								placeholder="Enter a name..."
 								aria-label="Agent name"
-								className="flex-1 min-w-0 bg-gray-50 dark:bg-slate-900/70 border border-gray-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-base text-gray-900 dark:text-slate-100 placeholder-gray-500 dark:placeholder-slate-500 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 dark:focus:border-indigo-400 dark:focus:ring-indigo-400/20 transition"
+								className={FIELD}
 							/>
-							<button type="submit" className={PRIMARY_BTN}>
+							<Button type="submit" variant="primary" size="sm">
 								Save
-							</button>
+							</Button>
 						</form>
 
 						{savedNotice && (
 							<p role="status" className="text-sm text-emerald-700 dark:text-emerald-400">
-								Your assistant's name is now {nameInput}.
+								You are now chatting with {nameInput}.
 							</p>
 						)}
 					</div>
@@ -230,13 +228,11 @@ export function SettingsView({
 					/>
 				</div>
 
-				<button
-					type="button"
-					onClick={onBackToChat}
-					className={`mt-8 px-1 py-1 rounded text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-slate-300 dark:hover:text-white transition-colors cursor-pointer ${FOCUS}`}
-				>
-					← Back
-				</button>
+				<div className="mt-8">
+					<Button variant="ghost" size="sm" onClick={onBackToChat}>
+						← Back
+					</Button>
+				</div>
 			</div>
 		</div>
 	);

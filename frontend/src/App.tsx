@@ -1,7 +1,8 @@
-// import { useState, useEffect, useRef } from 'react';
 import { useState, useEffect, useRef, SyntheticEvent } from 'react';
 import { Sidebar } from './components/sidebar/Sidebar';
 import { Input } from './components/buttons/Input';
+import { IconButton } from './components/buttons/IconButton';
+import { HeartIcon, MenuIcon, MicIcon } from './components/buttons/Icons';
 import { InitialMood } from './components/chat/InitialMood';
 import { ChatThread } from './components/chat/ChatThread';
 import { PastChatsView } from './components/views/PastChatsView';
@@ -12,6 +13,9 @@ import { AuthCallback } from './components/views/AuthCallback';
 import SpeechRecognition, { useSpeechRecognition } from 'react-speech-recognition';
 import type { ActiveTab, ChatMessage, ChatSession, Mood, SidebarTab, Theme, BackendHistoryItem } from './types/chat';
 import './App.css';
+
+// default msg when backend connections iffy -> .no auto failure
+const CONNECTION_FALLBACK = "Pardon? I don't think I understood correctly, can you repeat what you said again?";
 
 function App() {
 	// start in the loginview -> no guest state for now
@@ -32,6 +36,9 @@ function App() {
 	const [isTyping, setIsTyping] = useState(false);
 	const [isLoadingSessions, setIsLoadingSessions] = useState(false);
 
+	// small screens: is the sidebar drawer open?
+	const [sidebarOpen, setSidebarOpen] = useState(false);
+
 	// for authentication
 	const isAuthCallback = window.location.pathname === '/auth/callback';
 
@@ -41,7 +48,7 @@ function App() {
 	const [theme, setTheme] = useState<Theme>('light');
 	const [samPFP, setSamPFP] = useState<null | string>(null);
 	const [userPFP, setUserPFP] = useState<null | string>(null);
-	const [samName, setSamName] = useState<string>('SAM');
+	const [samName, setSamName] = useState<string>('Sam');
 
 	// for speech to text
 	const {
@@ -67,8 +74,6 @@ function App() {
 			});
 		}
 	};
-	
-
 
 	useEffect(() => {
 		document.documentElement.classList.toggle('dark', theme === 'dark');
@@ -187,7 +192,7 @@ function App() {
 		// seem more human
 		let initialResponse = "How can I help you today?";
 		if (mood === 'terrible') {
-			initialResponse = "Oh no, what happened? Why was your day terrible";
+			initialResponse = "Oh no, I'm sorry to hear that. What happened today?";
 		} 
 		else if (mood === 'great' || mood === 'good') {
 			initialResponse = "Glad to hear that! What's on your mind today?";
@@ -246,7 +251,7 @@ function App() {
 			{
 				id: Date.now() + 1,
 				sender: 'sam',
-				text: agentResponse ?? "Sorry, can you repeat what you said one more time?",
+				text: agentResponse ?? CONNECTION_FALLBACK,
 				timestamp: new Date().toISOString(),
 			},
 		]);
@@ -320,7 +325,7 @@ function App() {
 			id: Date.now() + 1,
 			sender: 'sam', 
 			// ?? falls back on null so if agentResponse = null -> we ask user for input again
-			text: agentResponse ?? "Sorry, can you repeat what you said one more time?",
+			text: agentResponse ?? CONNECTION_FALLBACK,
 			timestamp: new Date().toISOString()
 		};
 		console.log("THIS IS MY CURR SESSID: ", sessionId);
@@ -499,6 +504,8 @@ function App() {
 		);
 	};
 
+	// "Welcome, Sam" only once we actually know the name
+	const displayName = username && username !== 'User' ? username : '';
 
   	return (
     	<div className="flex h-dvh w-full bg-[#f6f7f5] dark:bg-slate-900 text-gray-800 dark:text-slate-100 font-sans transition-colors duration-200 antialiased">
@@ -538,10 +545,25 @@ function App() {
 						// onOpenLogin={() => setActiveTab('login')}
 						onOpenSettings={() => setActiveTab('settings')}
 						isLoggedIn={Boolean(userId)}
-                        onLogout={handleLogout}
+						onLogout={handleLogout}
+						isOpen={sidebarOpen}
+						onClose={() => setSidebarOpen(false)}
+						username={username}
+						userPFP={userPFP}
 					/>
 
-					<main className="flex-1 flex flex-col h-full overflow-hidden relative">
+					<main className="flex-1 min-w-0 flex flex-col h-full overflow-hidden relative">
+						{/* top bar with the menu button, small screens only */}
+						<header className="md:hidden shrink-0 flex items-center gap-2 px-3 py-2 border-b border-gray-200/70 dark:border-slate-800 bg-[#f6f7f5] dark:bg-slate-900">
+							<IconButton label="Open menu" onClick={() => setSidebarOpen(true)}>
+								<MenuIcon />
+							</IconButton>
+							<div className="flex items-center gap-2">
+								<HeartIcon />
+								<span className="font-bold text-lg tracking-tight text-gray-900 dark:text-slate-100">chat</span>
+							</div>
+						</header>
+
 						{activeTab === 'pastChats' ? (
 							<PastChatsView 
 								onSelectChat={handleSelectPastChat} 
@@ -562,18 +584,18 @@ function App() {
 								onChangeSamName={setSamName}
 							/>
 						) : (
-							<div className="flex-1 flex flex-col h-full justify-between overflow-hidden">
+							<div className="flex-1 min-h-0 flex flex-col">
 								{messages.length === 0 ? (
-								<div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-8">
-									<div className="space-y-3">
-									<h1 className="text-4xl font-extrabold text-gray-900 dark:text-slate-100">Welcome</h1>
-									<p className="text-2xl text-gray-700 dark:text-slate-300">How was your day ?</p>
+									<div className="flex-1 min-h-0 overflow-y-auto flex flex-col items-center justify-center px-6 py-8 text-center gap-8">
+										<div className="space-y-3">
+											<h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-gray-900 dark:text-slate-100">
+												{displayName ? `Welcome, ${displayName}` : 'Welcome'}
+											</h1>
+											<p className="text-xl sm:text-2xl text-gray-600 dark:text-slate-300">How was your day?</p>
+										</div>
+										<InitialMood onSelectMood={handleMoodSelect} />
 									</div>
-									<InitialMood onSelectMood={handleMoodSelect} />
-								</div>
 								) : (
-								<div className="flex-1 flex flex-col overflow-y-auto">
-									{/* for the thinking before responding of the agent */}
 									<ChatThread 
 										messages={messages} 
 										isTyping={isTyping} 
@@ -584,10 +606,15 @@ function App() {
 										samName={samName}
 										username={username}
 									/>
-								</div>
 								)}
 
-								<div className="p-6 max-w-4xl w-full mx-auto">
+								{/* message box */}
+								<div className="shrink-0 px-4 sm:px-6 pt-2 pb-[max(1rem,env(safe-area-inset-bottom))] max-w-4xl w-full mx-auto">
+									{listening && (
+										<p role="status" className="px-3 pb-2 text-sm text-red-600 dark:text-red-400">
+											Listening... tap the microphone when you're done.
+										</p>
+									)}
 									<Input
 										value={inputVal}
 										onChange={(e) => {
@@ -597,36 +624,18 @@ function App() {
 										onSubmit={handleSubmit}
 										disabled={false}
 										submitDisabled={isTyping}
-										placeholder={messages.length === 0 ? "What is your question" : "Reply..."}
+										placeholder={messages.length === 0 ? "Type in your message..." : "Type your message..."}
 									>
 										{browserSupportsSpeechRecognition && (
-											<button
-												type="button"
+											<IconButton
+												label={listening ? 'Stop voice input' : 'Speak to type'}
 												onClick={handleToggleMic}
 												disabled={isTyping}
-												aria-label={listening ? 'Stop voice input' : 'Start voice input'}
-												title={listening ? 'Stop listening' : 'Speak to type'}
-												className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
-													listening
-														? 'bg-red-100 text-red-600 dark:bg-red-950/60 dark:text-red-400 animate-pulse'
-														: 'text-gray-500 hover:bg-gray-100 dark:text-slate-400 dark:hover:bg-slate-700/60'
-												}`}
+												tone={listening ? 'active' : 'default'}
+												className={listening ? 'animate-pulse motion-reduce:animate-none' : ''}
 											>
-												<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-													<path
-														strokeLinecap="round"
-														strokeLinejoin="round"
-														strokeWidth="2"
-														d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"
-													/>
-													<path
-														strokeLinecap="round"
-														strokeLinejoin="round"
-														strokeWidth="2"
-														d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8"
-													/>
-												</svg>
-											</button>
+												<MicIcon />
+											</IconButton>
 										)}
 									</Input>
 								</div>

@@ -77,7 +77,7 @@ export function MessageMenu({ x, y, items, onClose }: MessageMenuProps) {
 			onContextMenu={(e) => e.preventDefault()}
 			onKeyDown={handleArrowKeys}
 			style={{ position: 'fixed', left: pos.left, top: pos.top }}
-			className="z-50 min-w-48 rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-800 py-1 shadow-xl overflow-hidden"
+			className="z-50 min-w-48 rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-800 py-1 shadow-xl overflow-hidden animate-menu-in"
 		>
 			{items.map((item) => (
 				<button
