@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { ChangeEvent, SyntheticEvent } from 'react';
 import type { Theme } from '../../types/chat';
 import { Button } from '../buttons/Button';
-import { PRESS, FOCUS, CARD, PAGE, PAGE_INNER, HEADING, SUBTEXT } from '../buttons/styles';
+import { PRESS, FOCUS } from '../buttons/styles';
 
 interface PFPChooserProps {
 	title: string;
@@ -35,11 +35,20 @@ const PFP_PRESETS = [
 	{ id: 'muscles', label: 'Muscles', src: makeEmojiAvatar('💪', '#ede9fe') },
 ];
 
-const CARD_PADDING = 'p-5 sm:p-8';
-const FIELD =
-	'flex-1 min-w-0 bg-gray-50 dark:bg-slate-900/70 border border-gray-200 dark:border-slate-700 rounded-full px-5 py-2.5 text-base text-gray-900 dark:text-slate-100 placeholder-gray-500 dark:placeholder-slate-500 focus:outline-none focus:border-purple-500 focus:ring-4 focus:ring-purple-500/15 dark:focus:border-indigo-400 dark:focus:ring-indigo-400/20 transition';
+// torn notebook look
+const TORN_NOTEBOOK_CLIP =
+	'polygon(0% 10px, 3% 2px, 6% 12px, 10% 3px, 14% 11px, 18% 2px, 22% 12px, 26% 4px, 30% 11px, 34% 2px, 39% 12px, 43% 3px, 48% 11px, 53% 2px, 58% 12px, 63% 3px, 68% 11px, 73% 2px, 78% 12px, 83% 3px, 88% 11px, 93% 2px, 97% 10px, 100% 3px, 100% calc(100% - 10px), 97% calc(100% - 3px), 93% calc(100% - 12px), 88% calc(100% - 3px), 84% calc(100% - 11px), 79% calc(100% - 2px), 74% calc(100% - 12px), 69% calc(100% - 4px), 64% calc(100% - 11px), 59% calc(100% - 2px), 54% calc(100% - 12px), 49% calc(100% - 3px), 44% calc(100% - 11px), 39% calc(100% - 2px), 34% calc(100% - 12px), 29% calc(100% - 3px), 24% calc(100% - 11px), 19% calc(100% - 2px), 14% calc(100% - 12px), 9% calc(100% - 3px), 4% calc(100% - 11px), 0% calc(100% - 4px))';
 
-// for choosing pfp's for sam or the user
+const NOTEBOOK_PAPER_STYLE = {
+	clipPath: TORN_NOTEBOOK_CLIP,
+	backgroundColor: '#fcf9f2',
+	backgroundImage:
+		'linear-gradient(to right, transparent 42px, rgba(196, 122, 112, 0.32) 42px, rgba(196, 122, 112, 0.32) 43.5px, transparent 43.5px), repeating-linear-gradient(to bottom, transparent 0px, transparent 27px, rgba(154, 136, 112, 0.22) 27px, rgba(154, 136, 112, 0.22) 28px)',
+};
+
+const FIELD =
+	'flex-1 min-w-0 bg-[#fbf7ee] border border-[#d6c7b0] rounded-xs px-4 py-2 text-sm text-[#2b2118] placeholder-[#8a7967] focus:outline-none focus:border-[#6e4430] focus:ring-2 focus:ring-[#6e4430]/15 transition';
+
 function PFPChooser({
 	title,
 	description,
@@ -62,21 +71,26 @@ function PFPChooser({
 	};
 
 	return (
-		<div className={`${CARD} ${CARD_PADDING} space-y-5`}>
-			<div className="flex flex-wrap items-start justify-between gap-3">
-				<div className="space-y-1">
-					<h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100">{title}</h2>
-					{description && <p className="text-sm text-gray-500 dark:text-slate-400">{description}</p>}
+		<div className="border-t border-dashed border-[#d8cab4] pt-4 space-y-3">
+			<div className="flex flex-wrap items-start justify-between gap-2">
+				<div>
+					<h2 className="font-serif text-base font-semibold text-[#231a12]">{title}</h2>
+					{description && <p className="text-xs text-[#6c5d4d]">{description}</p>}
 				</div>
 
 				{currentPFP && (
-					<Button variant="ghost" size="sm" onClick={() => onSelectPFP?.(null)}>
+					<Button
+						variant="ghost"
+						size="sm"
+						onClick={() => onSelectPFP?.(null)}
+						className="rounded-xs! border border-[#d6c7b0] bg-[#fbf7ee] text-xs text-[#4a3b2d] hover:bg-[#f2eadb]"
+					>
 						{resetLabel}
 					</Button>
 				)}
 			</div>
 
-			<div className="flex flex-wrap items-center gap-3 sm:gap-4">
+			<div className="flex flex-wrap items-center gap-3">
 				{PFP_PRESETS.map((preset) => {
 					const isSelected = currentPFP === preset.src;
 					return (
@@ -87,22 +101,21 @@ function PFPChooser({
 							title={preset.label}
 							aria-label={preset.label}
 							aria-pressed={isSelected}
-							className={`p-1 rounded-full border-2 cursor-pointer ${PRESS} ${FOCUS} ${
+							className={`p-0.5 rounded-full border-2 cursor-pointer ${PRESS} ${FOCUS} ${
 								isSelected
-									? 'border-purple-600 dark:border-indigo-400 scale-105'
-									: 'border-transparent hover:border-gray-300 dark:hover:border-slate-600'
+									? 'border-[#6e4430] scale-105'
+									: 'border-transparent hover:border-[#c8b79e]'
 							}`}
 						>
-							<img src={preset.src} alt={preset.label} className="w-12 h-12 rounded-full object-cover" />
+							<img src={preset.src} alt={preset.label} className="w-10 h-10 rounded-full object-cover" />
 						</button>
 					);
 				})}
 
 				<label
-					className={`px-4 py-2 rounded-full text-sm font-medium border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-700/60 cursor-pointer has-focus-visible:ring-2 has-focus-visible:ring-purple-500/60 ${PRESS}`}
+					className={`px-3.5 py-1.5 rounded-xs text-xs font-medium border border-[#d6c7b0] bg-[#fbf7ee] text-[#3b2f24] hover:bg-[#f2eadb] cursor-pointer has-focus-visible:ring-2 has-focus-visible:ring-[#6e4430]/50 ${PRESS}`}
 				>
 					Upload image
-					{/* sr-only (not hidden) so keyboard users can still reach it */}
 					<input type="file" accept="image/*" onChange={handleFileChange} className="sr-only" />
 				</label>
 			</div>
@@ -125,6 +138,20 @@ export function SettingsView({
 	const [nameInput, setNameInput] = useState(samName);
 	const [savedNotice, setSavedNotice] = useState(false);
 
+	useEffect(() => {
+		setNameInput(samName);
+	}, [samName]);
+
+	useEffect(() => {
+		const onKeyDown = (e: KeyboardEvent) => {
+			if (e.key === 'Escape') {
+				onBackToChat();
+			}
+		};
+		window.addEventListener('keydown', onKeyDown);
+		return () => window.removeEventListener('keydown', onKeyDown);
+	}, [onBackToChat]);
+
 	const handleNameSubmit = (e: SyntheticEvent<HTMLFormElement>) => {
 		e.preventDefault();
 		const cleaned = nameInput.trim() || 'Sam';
@@ -140,98 +167,133 @@ export function SettingsView({
 	};
 
 	return (
-		<div className={PAGE}>
-			<div className={PAGE_INNER}>
-				<h1 className={`${HEADING} mb-2`}>Settings</h1>
-
-				<div className="space-y-5 sm:space-y-6">
-					{/* light/dark mode */}
-					<div className={`${CARD} ${CARD_PADDING} flex items-center justify-between gap-6`}>
-						<div className="space-y-1">
-							<h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100">Dark mode</h2>
-							<p className="text-sm text-gray-500 dark:text-slate-400">
-								{isDark ? 'On. Easier on the eyes at night.' : 'Off. Switch it on for a darker look.'}
-							</p>
-						</div>
+		<div
+			role="dialog"
+			aria-modal="true"
+			aria-labelledby="settings-popup-title"
+			onClick={onBackToChat}
+			className="fixed inset-0 z-50 flex items-center justify-center bg-[#231a12]/45 backdrop-blur-[1px] px-4 py-6"
+		>
+			{/* Drop shadow container outside clip-path */}
+			<div
+				onClick={(e) => e.stopPropagation()}
+				className="relative w-full max-w-xl drop-shadow-[0_18px_36px_rgba(35,26,18,0.28)]"
+			>
+				{/* Torn Notebook Page */}
+				<div
+					style={NOTEBOOK_PAPER_STYLE}
+					className="max-h-[82vh] overflow-y-auto pl-14 pr-6 py-7 sm:pl-16 sm:pr-8 sm:py-8 text-[#2b2118]"
+				>
+					{/* Header + Close Box (matches reference popup) */}
+					<div className="flex items-start justify-between gap-4 border-b border-[#d6c7b0] pb-3.5 mb-4">
+						<h1
+							id="settings-popup-title"
+							className="font-serif text-2xl sm:text-3xl font-bold tracking-tight text-[#231a12]"
+						>
+							Settings
+						</h1>
 
 						<button
 							type="button"
-							role="switch"
-							aria-checked={isDark}
-							aria-label="Dark mode"
-							onClick={onToggleTheme}
-							className={`relative w-14 h-8 rounded-full shrink-0 cursor-pointer transition-colors duration-200 motion-reduce:transition-none ${FOCUS} ${
-								isDark ? 'bg-indigo-500' : 'bg-gray-300'
-							}`}
+							onClick={onBackToChat}
+							aria-label="Close settings"
+							className={`flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-xs border border-[#8e6f56] bg-[#fcf9f2] text-lg text-[#3b2f24] shadow-[0_0_0_2px_#fcf9f2,0_0_0_3px_#b79d82] hover:bg-[#f2eadb] ${PRESS} ${FOCUS}`}
 						>
-							<span
-								className={`absolute top-1 left-1 w-6 h-6 rounded-full bg-white shadow transition-transform duration-200 motion-reduce:transition-none ${
-									isDark ? 'translate-x-6' : 'translate-x-0'
-								}`}
-							/>
+							×
 						</button>
 					</div>
 
-					{/* sam's (agent's) name */}
-					<div className={`${CARD} ${CARD_PADDING} space-y-4`}>
-						<div className="flex flex-wrap items-start justify-between gap-3">
-							<div className="space-y-1">
-								<h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100">Agent name</h2>
-								<p className="text-sm text-gray-500 dark:text-slate-400">
-									What are you talking to?
+					<div className="space-y-4">
+						{/* Dark / Light Mode */}
+						<div className="flex items-center justify-between gap-4 py-1">
+							<div>
+								<h2 className="font-serif text-base font-semibold text-[#231a12]">Dark / Light mode</h2>
+								<p className="text-xs text-[#6c5d4d]">
+									{isDark ? 'Dark mode enabled.' : 'Light notebook paper enabled.'}
 								</p>
 							</div>
 
-							{samName !== 'Sam' && (
-								<Button variant="ghost" size="sm" onClick={handleResetName}>
-									Reset to default
+							<button
+								type="button"
+								role="switch"
+								aria-checked={isDark}
+								aria-label="Dark mode"
+								onClick={onToggleTheme}
+								className={`relative w-12 h-7 rounded-full shrink-0 cursor-pointer transition-colors duration-200 ${FOCUS} ${
+									isDark ? 'bg-[#6e4430]' : 'bg-[#d6c7b0]'
+								}`}
+							>
+								<span
+									className={`absolute top-0.5 left-0.5 w-6 h-6 rounded-full bg-[#fcf9f2] border border-[#b8a58c] shadow transition-transform duration-200 ${
+										isDark ? 'translate-x-5' : 'translate-x-0'
+									}`}
+								/>
+							</button>
+						</div>
+
+						{/* Sam / Agent Name */}
+						<div className="border-t border-dashed border-[#d8cab4] pt-4 space-y-3">
+							<div className="flex flex-wrap items-start justify-between gap-2">
+								<div>
+									<h2 className="font-serif text-base font-semibold text-[#231a12]">Sam name</h2>
+									<p className="text-xs text-[#6c5d4d]">What would you like to call Sam?</p>
+								</div>
+
+								{samName !== 'Sam' && (
+									<Button
+										variant="ghost"
+										size="sm"
+										onClick={handleResetName}
+										className="rounded-xs! border border-[#d6c7b0] bg-[#fbf7ee] text-xs text-[#4a3b2d] hover:bg-[#f2eadb]"
+									>
+										Reset to default
+									</Button>
+								)}
+							</div>
+
+							<form onSubmit={handleNameSubmit} className="flex items-center gap-2.5">
+								<input
+									type="text"
+									value={nameInput}
+									onChange={(e) => setNameInput(e.target.value)}
+									maxLength={30}
+									placeholder="Enter Sam's name..."
+									aria-label="Sam name"
+									className={FIELD}
+								/>
+								<Button
+									type="submit"
+									variant="primary"
+									size="sm"
+									className="rounded-xs! border-[#5d3827]! bg-[#6e4430]! text-[#fcf9f2]! hover:bg-[#5b3726]!"
+								>
+									Save
 								</Button>
+							</form>
+
+							{savedNotice && (
+								<p role="status" className="text-xs text-[#465a45] font-medium">
+									Now chatting with {nameInput}.
+								</p>
 							)}
 						</div>
 
-						<form onSubmit={handleNameSubmit} className="flex items-center gap-3">
-							<input
-								type="text"
-								value={nameInput}
-								onChange={(e) => setNameInput(e.target.value)}
-								maxLength={30}
-								placeholder="Enter a name..."
-								aria-label="Agent name"
-								className={FIELD}
-							/>
-							<Button type="submit" variant="primary" size="sm">
-								Save
-							</Button>
-						</form>
+						{/* Sam PFP */}
+						<PFPChooser
+							title="Sam PFP"
+							description="Choose a profile picture for Sam."
+							currentPFP={samPFP}
+							onSelectPFP={onSelectSamPFP}
+						/>
 
-						{savedNotice && (
-							<p role="status" className="text-sm text-emerald-700 dark:text-emerald-400">
-								You are now chatting with {nameInput}.
-							</p>
-						)}
+						{/* User PFP */}
+						<PFPChooser
+							title="User PFP"
+							description="Choose your profile picture."
+							currentPFP={userPFP}
+							onSelectPFP={onSelectUserPFP}
+						/>
 					</div>
-
-					{/* sam's pfp */}
-					<PFPChooser
-						title="Sam's profile picture"
-						description="Choose a picture for your assistant."
-						currentPFP={samPFP}
-						onSelectPFP={onSelectSamPFP}
-					/>
-
-					{/* user's pfp */}
-					<PFPChooser
-						title="Your profile picture"
-						description="This appears next to your messages."
-						currentPFP={userPFP}
-						onSelectPFP={onSelectUserPFP}
-					/>
-				</div>
-
-				<div className="mt-8">
-					<Button variant="ghost" size="sm" onClick={onBackToChat}>
-						← Back
-					</Button>
 				</div>
 			</div>
 		</div>
